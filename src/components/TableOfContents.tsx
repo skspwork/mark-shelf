@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { List } from "lucide-react";
 
 export interface HeadingInfo {
   id: string;
@@ -16,7 +15,6 @@ interface Props {
 
 export function TableOfContents({ headings, scrollContainer }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
@@ -56,34 +54,25 @@ export function TableOfContents({ headings, scrollContainer }: Props) {
   if (headings.length === 0) return null;
 
   return (
-    <div className="border-b border-[var(--border-default)]">
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] w-full text-left transition-colors"
-      >
-        <List size={12} />
-        <span className="tracking-wide uppercase">目次</span>
-        <span className="text-[10px] opacity-60">({headings.length})</span>
-        <span className="ml-auto text-[10px]">{collapsed ? "▶" : "▼"}</span>
-      </button>
-      {!collapsed && (
-        <nav className="px-4 pb-2.5 space-y-px">
-          {headings.map((h) => (
-            <button
-              key={h.id}
-              onClick={() => handleClick(h.id)}
-              className={`block w-full text-left text-[11px] leading-relaxed py-0.5 truncate transition-colors rounded px-1.5 ${
-                activeId === h.id
-                  ? "text-[var(--brand-primary)] font-medium bg-blue-50"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
-              }`}
-              style={{ paddingLeft: `${(h.level - 1) * 14 + 6}px` }}
-            >
-              {h.text}
-            </button>
-          ))}
-        </nav>
-      )}
-    </div>
+    <nav className="py-3 px-2 space-y-px">
+      <div className="text-[10px] font-medium text-[var(--text-muted)] tracking-wider uppercase px-1.5 mb-1.5">
+        目次
+      </div>
+      {headings.map((h) => (
+        <button
+          key={h.id}
+          onClick={() => handleClick(h.id)}
+          className={`block w-full text-left text-[11px] leading-relaxed py-0.5 truncate transition-colors rounded px-1.5 ${
+            activeId === h.id
+              ? "text-[var(--brand-primary)] font-medium bg-blue-50"
+              : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+          }`}
+          style={{ paddingLeft: `${(h.level - 1) * 10 + 6}px` }}
+          title={h.text}
+        >
+          {h.text}
+        </button>
+      ))}
+    </nav>
   );
 }

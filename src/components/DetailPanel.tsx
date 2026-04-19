@@ -20,7 +20,15 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
   const [content, setContent] = useState<string | null>(null);
   const [tab, setTab] = useState<"content" | "history" | "links">("content");
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
+  const [tocWidth, setTocWidth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("markshelf:tocWidth");
+      return saved ? Number(saved) || 176 : 176;
+    }
+    return 176;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tocContainerRef = useRef<HTMLDivElement>(null);
 
   // Preview popup state
   const [previewPath, setPreviewPath] = useState<string | null>(null);
@@ -62,6 +70,28 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
   const handlePreviewLeave = useCallback(() => {
     handlePreviewHide();
   }, [handlePreviewHide]);
+
+  const startTocResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    const container = tocContainerRef.current?.parentElement;
+    const onMouseMove = (e: MouseEvent) => {
+      if (!container) return;
+      const containerRight = container.getBoundingClientRect().right;
+      const w = Math.max(120, Math.min(400, containerRight - e.clientX));
+      setTocWidth(w);
+      localStorage.setItem("markshelf:tocWidth", String(w));
+    };
+    const onMouseUp = () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, []);
 
   const fileName = filePath.split("/").pop()?.replace(/\.md$/i, "") || filePath;
 
@@ -119,11 +149,10 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto" ref={scrollRef}>
-        {tab === "content" ? (
-          content !== null ? (
-            <>
-              <TableOfContents headings={headings} scrollContainer={scrollRef.current} />
+      {tab === "content" ? (
+        content !== null ? (
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 overflow-y-auto" ref={scrollRef}>
               <div className="p-4">
                 <Markdown
                   onHeadingsExtracted={setHeadings}
@@ -136,16 +165,34 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
                   {content}
                 </Markdown>
               </div>
-            </>
-          ) : (
-            <div className="p-4 text-[var(--text-muted)] text-sm">読み込み中...</div>
-          )
-        ) : tab === "history" ? (
-          <HistoryPanel filePath={filePath} />
+            </div>
+            {headings.length > 0 && (
+              <div className="flex shrink-0" ref={tocContainerRef}>
+                <div
+                  className="w-1 hover:bg-[var(--brand-primary)] bg-[var(--border-default)] cursor-col-resize shrink-0 transition-colors duration-150"
+                  onMouseDown={startTocResize}
+                />
+                <div
+                  className="overflow-y-auto border-l border-[var(--border-default)]"
+                  style={{ width: tocWidth }}
+                >
+                  <TableOfContents headings={headings} scrollContainer={scrollRef.current} />
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
+          <div className="flex-1 p-4 text-[var(--text-muted)] text-sm">読み込み中...</div>
+        )
+      ) : tab === "history" ? (
+        <div className="flex-1 overflow-y-auto" ref={scrollRef}>
+          <HistoryPanel filePath={filePath} />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-hidden">
           <LinkGraph currentPath={filePath} onNavigate={(p) => onNavigate?.(p)} />
-        )}
-      </div>
+        </div>
+      )}
 
       <PreviewPopup
         path={previewPath}
