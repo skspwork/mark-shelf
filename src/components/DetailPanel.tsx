@@ -28,7 +28,6 @@ export function DetailPanel({ filePath, fileRefs, onNavigate }: Props) {
 
   useEffect(() => {
     setContent(null);
-    setTab("content");
     setHeadings([]);
     fetch(`/api/file?path=${encodeURIComponent(filePath)}`)
       .then((r) => r.json())
