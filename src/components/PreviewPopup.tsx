@@ -59,7 +59,7 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
       ref={popupRef}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-50 w-96 max-h-80 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg shadow-xl"
+      className="fixed z-50 w-[480px] max-h-[420px] overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg shadow-xl"
       style={{
         left: adjustedPos?.x ?? position.x,
         top: adjustedPos?.y ?? position.y,
