@@ -1,8 +1,18 @@
+import path from "path";
 import simpleGit, { type LogResult, type DefaultLogFields } from "simple-git";
 import { getDocsRoot } from "./docs";
 
 function getGit() {
   return simpleGit(getDocsRoot());
+}
+
+/** Get the docs root path relative to the git repository root, with forward slashes. Returns "" if they are the same. */
+async function getDocsPrefix(): Promise<string> {
+  const git = getGit();
+  const repoRoot = (await git.revparse(["--show-toplevel"])).trim();
+  const docsRoot = path.resolve(getDocsRoot());
+  const rel = path.relative(repoRoot, docsRoot).replace(/\\/g, "/");
+  return rel === "." ? "" : rel;
 }
 
 export interface CommitEntry {
@@ -27,6 +37,60 @@ export async function getFileHistory(relPath: string, maxCount = 30): Promise<Co
       message: entry.message,
       author: entry.author_name,
     }));
+  } catch {
+    return [];
+  }
+}
+
+export interface TimelineEntry {
+  hash: string;
+  hashShort: string;
+  date: string;
+  message: string;
+  author: string;
+  files: string[]; // changed .md file paths relative to docs root
+}
+
+export async function getTimeline(maxCount = 100): Promise<TimelineEntry[]> {
+  const git = getGit();
+  try {
+    const prefix = await getDocsPrefix();
+    // Restrict to .md files under the docs root directory
+    const pathPattern = prefix ? `${prefix}/**/*.md` : "*.md";
+    const pathPattern2 = prefix ? undefined : "**/*.md";
+
+    const DELIM = "---COMMIT_BOUNDARY---";
+    const args = [
+      "-c", "core.quotePath=false",
+      "log",
+      `--max-count=${maxCount}`,
+      `--format=${DELIM}%n%H%n%h%n%aI%n%s%n%an`,
+      "--name-only",
+      "--diff-filter=ACDMR",
+      "--", pathPattern,
+    ];
+    if (pathPattern2) args.push(pathPattern2);
+
+    const log = await git.raw(args);
+
+    const entries: TimelineEntry[] = [];
+    const blocks = log.split(DELIM).filter((b) => b.trim());
+
+    for (const block of blocks) {
+      const lines = block.trim().split("\n").filter((l) => l.length > 0);
+      if (lines.length < 5) continue;
+
+      const [hash, hashShort, date, message, author, ...fileLines] = lines;
+      // Strip the docs prefix from file paths so they are relative to MARKSHELF_ROOT
+      const files = fileLines
+        .filter((f) => f.endsWith(".md"))
+        .map((f) => (prefix && f.startsWith(prefix + "/") ? f.slice(prefix.length + 1) : f));
+      if (files.length === 0) continue;
+
+      entries.push({ hash, hashShort, date, message, author, files });
+    }
+
+    return entries;
   } catch {
     return [];
   }

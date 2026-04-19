@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { TreeView } from "@/components/TreeView";
 import { DetailPanel } from "@/components/DetailPanel";
 import { SearchBar } from "@/components/SearchBar";
+import { TimelinePanel } from "@/components/TimelinePanel";
+import { Clock } from "lucide-react";
 
 interface TreeEntry {
   name: string;
@@ -19,6 +21,7 @@ export default function Home() {
   const [root, setRoot] = useState<string>("");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [treeWidth, setTreeWidth] = useState(260);
+  const [showTimeline, setShowTimeline] = useState(false);
   const historyStack = useRef<string[]>([]);
 
   const navigateTo = useCallback((path: string | null) => {
@@ -98,6 +101,19 @@ export default function Home() {
             {root}
           </span>
         )}
+        <div className="ml-auto">
+          <button
+            onClick={() => setShowTimeline(!showTimeline)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
+              showTimeline
+                ? "bg-[var(--brand-primary)] text-white"
+                : "text-[var(--text-muted)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            <Clock size={12} />
+            タイムライン
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -118,9 +134,11 @@ export default function Home() {
         />
 
         <div
-          className="flex-1 border-l border-[var(--border-default)] bg-[var(--bg-surface)] overflow-y-auto"
+          className="flex-1 border-l border-[var(--border-default)] bg-[var(--bg-surface)] overflow-hidden flex flex-col"
         >
-          {selectedPath ? (
+          {showTimeline ? (
+            <TimelinePanel onNavigate={(path) => { navigateTo(path); setShowTimeline(false); }} />
+          ) : selectedPath ? (
             <DetailPanel
               filePath={selectedPath}
               fileRefs={fileRefs}

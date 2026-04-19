@@ -24,7 +24,16 @@ export function DiffView({ filePath, hash }: Props) {
 
   return (
     <pre className="text-[11px] font-[var(--font-mono)] bg-[var(--bg-muted)] rounded-lg p-3 overflow-x-auto leading-[1.7] border border-[var(--border-default)]">
-      {diff.split("\n").map((line, i) => {
+      {diff.split("\n").filter((line) =>
+        !line.startsWith("diff --git") &&
+        !line.startsWith("index ") &&
+        !line.startsWith("new file") &&
+        !line.startsWith("deleted file") &&
+        !line.startsWith("similarity") &&
+        !line.startsWith("rename ") &&
+        !line.startsWith("old mode") &&
+        !line.startsWith("new mode")
+      ).map((line, i) => {
         let color = "var(--text-secondary)";
         let bg = "transparent";
         if (line.startsWith("+") && !line.startsWith("+++")) {

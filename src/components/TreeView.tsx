@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronDown, ChevronRight, Folder, FileText } from "lucide-react";
 
 interface TreeEntry {
@@ -18,15 +18,92 @@ interface Props {
   onSelect: (path: string) => void;
 }
 
+/** Collect all folder paths that are ancestors of targetPath */
+function getAncestorPaths(entries: TreeEntry[], targetPath: string): Set<string> {
+  const result = new Set<string>();
+
+  function walk(items: TreeEntry[], ancestors: string[]): boolean {
+    for (const item of items) {
+      if (item.type === "file" && item.path === targetPath) {
+        for (const a of ancestors) result.add(a);
+        return true;
+      }
+      if (item.type === "folder") {
+        // Check README match
+        if (item.hasReadme && item.path + "/README.md" === targetPath) {
+          for (const a of ancestors) result.add(a);
+          return true;
+        }
+        if (item.children && walk(item.children, [...ancestors, item.path])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  walk(entries, []);
+  return result;
+}
+
 export function TreeView({ entries, selectedPath, onSelect }: Props) {
+  // Track which folders are expanded (by path)
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    // Initially expand top-level hasReadme folders
+    const initial = new Set<string>();
+    for (const e of entries) {
+      if (e.type === "folder" && e.hasReadme) {
+        initial.add(e.path);
+      }
+    }
+    return initial;
+  });
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLDivElement>(null);
+
+  // When selectedPath changes, expand ancestors and scroll into view
+  useEffect(() => {
+    if (!selectedPath) return;
+
+    const ancestors = getAncestorPaths(entries, selectedPath);
+    if (ancestors.size > 0) {
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        for (const a of ancestors) next.add(a);
+        return next;
+      });
+    }
+
+    // Scroll after DOM update
+    requestAnimationFrame(() => {
+      selectedRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }, [selectedPath, entries]);
+
+  const toggleExpand = useCallback((path: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }, []);
+
   return (
-    <div className="h-full overflow-y-auto py-1 bg-[var(--bg-base)]">
+    <div ref={scrollContainerRef} className="h-full overflow-y-auto py-1 bg-[var(--bg-base)]">
       {entries.map((entry) => (
         <TreeNode
           key={entry.path}
           entry={entry}
           depth={0}
           selectedPath={selectedPath}
+          selectedRef={selectedRef}
+          expanded={expanded}
+          onToggle={toggleExpand}
           onSelect={onSelect}
         />
       ))}
@@ -43,25 +120,31 @@ function TreeNode({
   entry,
   depth,
   selectedPath,
+  selectedRef,
+  expanded,
+  onToggle,
   onSelect,
 }: {
   entry: TreeEntry;
   depth: number;
   selectedPath: string | null;
+  selectedRef: React.RefObject<HTMLDivElement | null>;
+  expanded: Set<string>;
+  onToggle: (path: string) => void;
   onSelect: (path: string) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(depth > 0 && !entry.hasReadme);
   const isFolder = entry.type === "folder" && !entry.hasReadme;
+  const isExpanded = expanded.has(entry.path);
+  const hasChildren = entry.type === "folder" && entry.children && entry.children.length > 0;
   const isSelected = entry.type === "file"
     ? selectedPath === entry.path
     : entry.hasReadme && selectedPath === entry.path + "/README.md";
 
   const handleClick = () => {
     if (entry.type === "folder" && entry.hasReadme) {
-      // README folder: behave like a file
       onSelect(entry.path + "/README.md");
     } else if (isFolder) {
-      setCollapsed(!collapsed);
+      onToggle(entry.path);
     } else {
       onSelect(entry.path);
     }
@@ -69,7 +152,7 @@ function TreeNode({
 
   const handleChevronClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCollapsed(!collapsed);
+    onToggle(entry.path);
   };
 
   const indent = depth * 16 + 8;
@@ -77,6 +160,7 @@ function TreeNode({
   return (
     <>
       <div
+        ref={isSelected ? selectedRef : undefined}
         onClick={handleClick}
         className={`
           flex items-center gap-1.5 cursor-pointer select-none
@@ -88,12 +172,12 @@ function TreeNode({
         `}
         style={{ paddingLeft: indent }}
       >
-        {entry.type === "folder" && entry.children && entry.children.length > 0 ? (
+        {hasChildren ? (
           <span
             onClick={handleChevronClick}
             className="shrink-0 text-[var(--text-muted)] w-4 flex items-center justify-center hover:text-[var(--text-primary)]"
           >
-            {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
         ) : (
           <span className="shrink-0 w-4" />
@@ -112,7 +196,7 @@ function TreeNode({
         </span>
       </div>
 
-      {entry.type === "folder" && !collapsed && entry.children && entry.children.length > 0 && (
+      {entry.type === "folder" && isExpanded && entry.children && entry.children.length > 0 && (
         <>
           {entry.children.map((child) => (
             <TreeNode
@@ -120,6 +204,9 @@ function TreeNode({
               entry={child}
               depth={depth + 1}
               selectedPath={selectedPath}
+              selectedRef={selectedRef}
+              expanded={expanded}
+              onToggle={onToggle}
               onSelect={onSelect}
             />
           ))}
