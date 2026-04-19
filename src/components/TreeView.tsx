@@ -50,16 +50,18 @@ function TreeNode({
   selectedPath: string | null;
   onSelect: (path: string) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(depth > 0);
-  const isFolder = entry.type === "folder";
+  const [collapsed, setCollapsed] = useState(depth > 0 && !entry.hasReadme);
+  const isFolder = entry.type === "folder" && !entry.hasReadme;
   const isSelected = entry.type === "file"
     ? selectedPath === entry.path
     : entry.hasReadme && selectedPath === entry.path + "/README.md";
 
   const handleClick = () => {
-    if (isFolder) {
+    if (entry.type === "folder" && entry.hasReadme) {
+      // README folder: behave like a file
+      onSelect(entry.path + "/README.md");
+    } else if (isFolder) {
       setCollapsed(!collapsed);
-      if (entry.hasReadme) onSelect(entry.path + "/README.md");
     } else {
       onSelect(entry.path);
     }
@@ -86,7 +88,7 @@ function TreeNode({
         `}
         style={{ paddingLeft: indent }}
       >
-        {isFolder ? (
+        {entry.type === "folder" && entry.children && entry.children.length > 0 ? (
           <span
             onClick={handleChevronClick}
             className="shrink-0 text-[var(--text-muted)] w-4 flex items-center justify-center hover:text-[var(--text-primary)]"
@@ -110,7 +112,7 @@ function TreeNode({
         </span>
       </div>
 
-      {isFolder && !collapsed && entry.children && entry.children.length > 0 && (
+      {entry.type === "folder" && !collapsed && entry.children && entry.children.length > 0 && (
         <>
           {entry.children.map((child) => (
             <TreeNode
