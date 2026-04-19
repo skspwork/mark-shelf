@@ -25,6 +25,7 @@ export function SearchBar({ onSelect }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const search = useCallback((q: string) => {
     if (!q.trim()) {
@@ -68,12 +69,21 @@ export function SearchBar({ onSelect }: Props) {
         inputRef.current?.blur();
       }
     };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   return (
-    <div className="relative px-4 pt-4 pb-2">
+    <div ref={containerRef} className="relative px-4 pt-4 pb-2">
       <div className="relative">
         <Search
           size={14}
