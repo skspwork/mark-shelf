@@ -18,7 +18,7 @@ export default function Home() {
   const [tree, setTree] = useState<TreeEntry[]>([]);
   const [root, setRoot] = useState<string>("");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [panelWidth, setPanelWidth] = useState(400);
+  const [treeWidth, setTreeWidth] = useState(260);
   const historyStack = useRef<string[]>([]);
 
   const navigateTo = useCallback((path: string | null) => {
@@ -45,8 +45,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem("markshelf:panelWidth");
-    if (saved) setPanelWidth(Number(saved) || 400);
+    const saved = localStorage.getItem("markshelf:treeWidth");
+    if (saved) setTreeWidth(Number(saved) || 260);
   }, []);
 
   const fileRefs = useMemo(() => {
@@ -73,9 +73,9 @@ export default function Home() {
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
     const onMouseMove = (e: MouseEvent) => {
-      const w = Math.max(280, Math.min(window.innerWidth * 0.6, window.innerWidth - e.clientX));
-      setPanelWidth(w);
-      localStorage.setItem("markshelf:panelWidth", String(w));
+      const w = Math.max(180, Math.min(window.innerWidth * 0.4, e.clientX));
+      setTreeWidth(w);
+      localStorage.setItem("markshelf:treeWidth", String(w));
     };
     const onMouseUp = () => {
       document.body.style.userSelect = "";
@@ -101,7 +101,7 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="overflow-hidden flex flex-col shrink-0" style={{ width: treeWidth }}>
           <SearchBar onSelect={navigateTo} />
           <div className="flex-1 overflow-hidden">
             <TreeView
@@ -118,8 +118,7 @@ export default function Home() {
         />
 
         <div
-          className="border-l border-[var(--border-default)] bg-[var(--bg-surface)] overflow-y-auto shrink-0"
-          style={{ width: panelWidth }}
+          className="flex-1 border-l border-[var(--border-default)] bg-[var(--bg-surface)] overflow-y-auto"
         >
           {selectedPath ? (
             <DetailPanel
