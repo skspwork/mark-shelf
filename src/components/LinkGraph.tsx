@@ -23,12 +23,14 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [loading, setLoading] = useState(true);
   const [empty, setEmpty] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     setLoading(true);
     setEmpty(false);
+    setReady(false);
 
     fetch("/api/graph")
       .then((r) => r.json())
@@ -144,9 +146,9 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
         requestAnimationFrame(() => {
           cy.resize();
           cy.fit(undefined, 50);
-          // Clamp zoom so it doesn't over-zoom when few nodes
           if (cy.zoom() > 1.2) cy.zoom({ level: 1.2, renderedPosition: { x: containerRef.current!.clientWidth / 2, y: containerRef.current!.clientHeight / 2 } });
           cy.center(cy.nodes("[?isCurrent]"));
+          setReady(true);
         });
 
         // Hover effects
@@ -208,7 +210,8 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
       )}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0"
+        className="flex-1 min-h-0 transition-opacity duration-150"
+        style={{ opacity: ready ? 1 : 0 }}
       />
     </div>
   );

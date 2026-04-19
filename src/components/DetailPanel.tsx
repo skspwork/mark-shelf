@@ -204,6 +204,7 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
         }}
         onMouseEnter={handlePreviewEnter}
         onMouseLeave={handlePreviewLeave}
+        fileRefs={fileRefs}
       />
     </div>
   );
