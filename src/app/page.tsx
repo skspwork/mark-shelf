@@ -1,65 +1,124 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { TreeView } from "@/components/TreeView";
+import { DetailPanel } from "@/components/DetailPanel";
+import { SearchBar } from "@/components/SearchBar";
+
+interface TreeEntry {
+  name: string;
+  displayName: string;
+  path: string;
+  type: "folder" | "file";
+  children?: TreeEntry[];
+  hasReadme?: boolean;
+}
 
 export default function Home() {
+  const [tree, setTree] = useState<TreeEntry[]>([]);
+  const [root, setRoot] = useState<string>("");
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [panelWidth, setPanelWidth] = useState(400);
+
+  useEffect(() => {
+    fetch("/api/tree")
+      .then((r) => r.json())
+      .then((data) => {
+        setTree(data.tree ?? []);
+        setRoot(data.root ?? "");
+      });
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("markshelf:panelWidth");
+    if (saved) setPanelWidth(Number(saved) || 400);
+  }, []);
+
+  const fileRefs = useMemo(() => {
+    function flatten(entries: TreeEntry[]): { path: string; displayName: string }[] {
+      const refs: { path: string; displayName: string }[] = [];
+      for (const e of entries) {
+        if (e.type === "file") {
+          refs.push({ path: e.path, displayName: e.displayName });
+        }
+        if (e.type === "folder") {
+          if (e.hasReadme) {
+            refs.push({ path: e.path + "/README.md", displayName: e.displayName });
+          }
+          if (e.children) refs.push(...flatten(e.children));
+        }
+      }
+      return refs;
+    }
+    return flatten(tree);
+  }, [tree]);
+
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    const onMouseMove = (e: MouseEvent) => {
+      const w = Math.max(280, Math.min(window.innerWidth * 0.6, window.innerWidth - e.clientX));
+      setPanelWidth(w);
+      localStorage.setItem("markshelf:panelWidth", String(w));
+    };
+    const onMouseUp = () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="h-screen flex flex-col">
+      <header className="h-11 border-b border-[var(--border-default)] bg-[var(--bg-surface)] flex items-center px-5 shrink-0 gap-3">
+        <span className="font-semibold text-[15px] tracking-tight leading-none">
+          Mark<span className="text-[var(--brand-primary)]">Shelf</span>
+        </span>
+        {root && (
+          <span className="text-[11px] text-[var(--text-muted)] font-[var(--font-mono)] truncate leading-none">
+            {root}
+          </span>
+        )}
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <SearchBar onSelect={setSelectedPath} />
+          <div className="flex-1 overflow-hidden">
+            <TreeView
+              entries={tree}
+              selectedPath={selectedPath}
+              onSelect={setSelectedPath}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
-      </main>
+
+        <div
+          className="w-1.5 hover:bg-[var(--brand-primary)] bg-[var(--border-default)] cursor-col-resize shrink-0 transition-colors duration-150"
+          onMouseDown={startResize}
+        />
+
+        <div
+          className="border-l border-[var(--border-default)] bg-[var(--bg-surface)] overflow-y-auto shrink-0"
+          style={{ width: panelWidth }}
+        >
+          {selectedPath ? (
+            <DetailPanel
+              filePath={selectedPath}
+              fileRefs={fileRefs}
+              onNavigate={setSelectedPath}
+            />
+          ) : (
+            <div className="p-6 text-[var(--text-muted)] text-sm flex items-center justify-center h-full">
+              ファイルをクリックして内容を表示
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

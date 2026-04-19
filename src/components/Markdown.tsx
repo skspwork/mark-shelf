@@ -1,0 +1,294 @@
+"use client";
+
+import { useEffect, useMemo } from "react";
+import ReactMarkdown, { Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { HeadingInfo } from "./TableOfContents";
+import { MermaidBlock } from "./MermaidBlock";
+
+export interface FileRef {
+  displayName: string;
+  path: string;
+}
+
+interface Props {
+  children: string;
+  onHeadingsExtracted?: (headings: HeadingInfo[]) => void;
+  fileRefs?: FileRef[];
+  currentPath?: string;
+  onNavigate?: (path: string) => void;
+  onPreviewShow?: (path: string, rect: DOMRect) => void;
+  onPreviewHide?: () => void;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
+
+/** Parse headings from raw markdown text so IDs are deterministic and not affected by React strict mode */
+function parseHeadings(markdown: string): HeadingInfo[] {
+  const headings: HeadingInfo[] = [];
+  const seen = new Map<string, number>();
+  const re = /^(#{1,4})\s+(.+)$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(markdown)) !== null) {
+    const level = m[1].length;
+    const text = m[2].replace(/[#*_`[\]]/g, "").trim();
+    const base = slugify(text) || "heading";
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    const id = count === 0 ? base : `${base}-${count}`;
+    headings.push({ id, text, level });
+  }
+  return headings;
+}
+
+export function Markdown({
+  children,
+  onHeadingsExtracted,
+  fileRefs,
+  currentPath,
+  onNavigate,
+  onPreviewShow,
+  onPreviewHide,
+}: Props) {
+  // Parse headings deterministically from the markdown source
+  const headings = useMemo(() => parseHeadings(children), [children]);
+
+  // Build a map from heading text → id for the components to use
+  const headingIdMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const h of headings) {
+      const existing = map.get(h.text) ?? [];
+      existing.push(h.id);
+      map.set(h.text, existing);
+    }
+    return map;
+  }, [headings]);
+
+  // Track which heading text has been consumed during this render
+  const headingCounters = useMemo(() => new Map<string, number>(), [headings]);
+
+  // Notify parent of headings
+  useEffect(() => {
+    onHeadingsExtracted?.(headings);
+  }, [headings, onHeadingsExtracted]);
+
+  // Build autolink regex from fileRefs
+  const autolinkMap = useMemo(() => {
+    if (!fileRefs || fileRefs.length === 0) return null;
+    const map = new Map<string, string>();
+    const filtered = fileRefs
+      .filter((f) => f.displayName.length > 2 && f.path !== currentPath)
+      .sort((a, b) => b.displayName.length - a.displayName.length);
+    for (const f of filtered) {
+      map.set(f.displayName, f.path);
+    }
+    return map;
+  }, [fileRefs, currentPath]);
+
+  const autolinkRegex = useMemo(() => {
+    if (!autolinkMap || autolinkMap.size === 0) return null;
+    const escaped = Array.from(autolinkMap.keys()).map((n) =>
+      n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    );
+    return new RegExp(`(${escaped.join("|")})`, "g");
+  }, [autolinkMap]);
+
+  function getIdForHeading(text: string): string {
+    const ids = headingIdMap.get(text);
+    if (!ids) return slugify(text) || "heading";
+    const idx = headingCounters.get(text) ?? 0;
+    headingCounters.set(text, idx + 1);
+    return ids[idx % ids.length];
+  }
+
+  function makeHeadingComponent(level: number) {
+    return function HeadingWithId(props: React.HTMLAttributes<HTMLHeadingElement>) {
+      const text =
+        typeof props.children === "string"
+          ? props.children
+          : extractText(props.children);
+      const id = getIdForHeading(text);
+
+      const hProps = { ...props, id };
+      switch (level) {
+        case 1: return <h1 {...hProps} />;
+        case 2: return <h2 {...hProps} />;
+        case 3: return <h3 {...hProps} />;
+        default: return <h4 {...hProps} />;
+      }
+    };
+  }
+
+  const components: Components = {
+    h1: makeHeadingComponent(1),
+    h2: makeHeadingComponent(2),
+    h3: makeHeadingComponent(3),
+    h4: makeHeadingComponent(4),
+    // Mermaid code blocks
+    code: ({ className, children, ...rest }) => {
+      const match = /language-mermaid/.exec(className || "");
+      if (match) {
+        const code = String(children).replace(/\n$/, "");
+        return <MermaidBlock code={code} />;
+      }
+      return <code className={className} {...rest}>{children}</code>;
+    },
+    // Wrap pre to avoid nesting issues with mermaid blocks
+    pre: ({ children }) => {
+      // If the child is a MermaidBlock (rendered from code), don't wrap in <pre>
+      if (
+        children &&
+        typeof children === "object" &&
+        "type" in children &&
+        (children as React.ReactElement).type === MermaidBlock
+      ) {
+        return <>{children}</>;
+      }
+      return <pre>{children}</pre>;
+    },
+    // Auto-link rendering: intercept <a> with "autolink:" prefix
+    a: ({ href, children: linkChildren, ...rest }) => {
+      if (href?.startsWith("autolink:")) {
+        const targetPath = href.slice("autolink:".length);
+        return (
+          <span
+            className="text-[var(--brand-primary)] border-b border-dashed border-[var(--brand-primary)] cursor-pointer hover:bg-blue-50 transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigate?.(targetPath);
+            }}
+            onMouseEnter={(e) => {
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              onPreviewShow?.(targetPath, rect);
+            }}
+            onMouseLeave={() => onPreviewHide?.()}
+          >
+            {linkChildren}
+          </span>
+        );
+      }
+      return <a href={href} {...rest}>{linkChildren}</a>;
+    },
+    // Inject auto-links into text content
+    p: ({ children: pChildren, ...rest }) => {
+      return <p {...rest}>{processAutolinks(pChildren)}</p>;
+    },
+    li: ({ children: liChildren, ...rest }) => {
+      return <li {...rest}>{processAutolinks(liChildren)}</li>;
+    },
+    td: ({ children: tdChildren, ...rest }) => {
+      return <td {...rest}>{processAutolinks(tdChildren)}</td>;
+    },
+  };
+
+  function processAutolinks(node: React.ReactNode): React.ReactNode {
+    if (!autolinkRegex || !autolinkMap) return node;
+
+    if (typeof node === "string") {
+      return splitWithAutolinks(node);
+    }
+
+    if (Array.isArray(node)) {
+      return node.map((child, i) => {
+        if (typeof child === "string") {
+          return <span key={i}>{splitWithAutolinks(child)}</span>;
+        }
+        return child;
+      });
+    }
+
+    return node;
+  }
+
+  function splitWithAutolinks(text: string): React.ReactNode {
+    if (!autolinkRegex || !autolinkMap) return text;
+
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    // Reset regex
+    autolinkRegex.lastIndex = 0;
+
+    while ((match = autolinkRegex.exec(text)) !== null) {
+      const matchedText = match[0];
+      const targetPath = autolinkMap.get(matchedText);
+      if (!targetPath) continue;
+
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+
+      parts.push(
+        <span
+          key={`${match.index}-${matchedText}`}
+          className="text-[var(--brand-primary)] border-b border-dashed border-[var(--brand-primary)] cursor-pointer hover:bg-blue-50 transition-colors"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate?.(targetPath);
+          }}
+          onMouseEnter={(e) => {
+            const rect = (e.target as HTMLElement).getBoundingClientRect();
+            onPreviewShow?.(targetPath, rect);
+          }}
+          onMouseLeave={() => onPreviewHide?.()}
+        >
+          {matchedText}
+        </span>,
+      );
+
+      lastIndex = match.index + matchedText.length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length === 0 ? text : parts;
+  }
+
+  return (
+    <div
+      className="prose prose-sm max-w-none
+      prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-[var(--text-primary)]
+      prose-h1:text-lg prose-h1:leading-snug prose-h1:mb-4
+      prose-h2:text-[15px] prose-h2:leading-snug prose-h2:border-b prose-h2:border-[var(--border-default)] prose-h2:pb-2 prose-h2:mt-8 prose-h2:mb-3
+      prose-h3:text-[13px] prose-h3:leading-snug prose-h3:mt-6 prose-h3:mb-2
+      prose-p:text-[var(--text-secondary)] prose-p:text-[13px] prose-p:leading-[1.75]
+      prose-li:text-[var(--text-secondary)] prose-li:text-[13px] prose-li:leading-[1.75]
+      prose-strong:text-[var(--text-primary)] prose-strong:font-semibold
+      prose-a:text-[var(--brand-primary)] prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+      prose-code:text-xs prose-code:text-[var(--text-primary)] prose-code:bg-[var(--bg-muted)] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+      prose-pre:bg-[var(--bg-muted)] prose-pre:text-xs prose-pre:text-[var(--text-primary)]
+      prose-table:text-[12px]
+      prose-th:bg-[var(--bg-muted)] prose-th:text-[var(--text-primary)] prose-th:font-semibold prose-th:px-3 prose-th:py-1.5 prose-th:text-left
+      prose-td:px-3 prose-td:py-1.5 prose-td:border-[var(--border-default)] prose-td:text-[var(--text-secondary)]
+      prose-hr:border-[var(--border-default)]
+      prose-blockquote:border-l-[var(--brand-primary)] prose-blockquote:text-[var(--text-muted)] prose-blockquote:not-italic
+      prose-img:rounded-lg
+    "
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {children}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (node && typeof node === "object" && "props" in node) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return extractText((node as any).props.children);
+  }
+  return "";
+}

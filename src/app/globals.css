@@ -1,26 +1,78 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Typography */
+  --font-sans: "Inter", "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Source Code Pro", "Cascadia Code", "Consolas", monospace;
+
+  /* Background */
+  --bg-base: #f7f8fa;
+  --bg-surface: #ffffff;
+  --bg-muted: #f0f2f5;
+  --bg-hover: #ebedf0;
+
+  /* Text — 4-step hierarchy */
+  --text-primary: #1a1d23;
+  --text-secondary: #4a5060;
+  --text-muted: #8b92a0;
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-default: #e0e3e8;
+  --border-hover: #c8ccd3;
+
+  /* Brand */
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+
+  /* Tree items */
+  --folder-bg: #e8f0fe;
+  --folder-border: #3b7ddb;
+  --folder-text: #1a3a5c;
+
+  --file-bg: #eee8fb;
+  --file-border: #7c6ec7;
+  --file-text: #3a356a;
+
+  /* Diff */
+  --add-bg: #ecfdf5;
+  --add-color: #16a34a;
+  --del-bg: #fef2f2;
+  --del-color: #dc2626;
+
+  /* Code */
+  --code-bg: #f0f2f5;
+  --code-border: #e0e3e8;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+}
+
+/* Scrollbar refinement */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
 }
