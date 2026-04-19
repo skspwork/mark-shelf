@@ -6,15 +6,17 @@ import { HistoryPanel } from "./HistoryPanel";
 import { TableOfContents, HeadingInfo } from "./TableOfContents";
 import { PreviewPopup } from "./PreviewPopup";
 import { LinkGraph } from "./LinkGraph";
-import { FileText, History, Network } from "lucide-react";
+import { FileText, History, Network, ArrowLeft } from "lucide-react";
 
 interface Props {
   filePath: string;
   fileRefs?: FileRef[];
   onNavigate?: (path: string) => void;
+  onGoBack?: () => void;
+  canGoBack?: boolean;
 }
 
-export function DetailPanel({ filePath, fileRefs, onNavigate }: Props) {
+export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBack }: Props) {
   const [content, setContent] = useState<string | null>(null);
   const [tab, setTab] = useState<"content" | "history" | "links">("content");
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
@@ -66,9 +68,20 @@ export function DetailPanel({ filePath, fileRefs, onNavigate }: Props) {
   return (
     <div className="flex flex-col h-full">
       <div className="border-b border-[var(--border-default)] px-4 py-2.5 shrink-0">
-        <h2 className="font-semibold text-[14px] leading-snug truncate text-[var(--text-primary)] mb-2">
-          {fileName}
-        </h2>
+        <div className="flex items-center gap-2 mb-2">
+          {canGoBack && (
+            <button
+              onClick={onGoBack}
+              className="shrink-0 p-0.5 rounded hover:bg-[var(--bg-muted)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              title="戻る"
+            >
+              <ArrowLeft size={14} />
+            </button>
+          )}
+          <h2 className="font-semibold text-[14px] leading-snug truncate text-[var(--text-primary)]">
+            {fileName}
+          </h2>
+        </div>
         <div className="flex gap-1">
           <button
             onClick={() => setTab("content")}

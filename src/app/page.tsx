@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { TreeView } from "@/components/TreeView";
 import { DetailPanel } from "@/components/DetailPanel";
 import { SearchBar } from "@/components/SearchBar";
@@ -19,6 +19,21 @@ export default function Home() {
   const [root, setRoot] = useState<string>("");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(400);
+  const historyStack = useRef<string[]>([]);
+
+  const navigateTo = useCallback((path: string | null) => {
+    if (selectedPath && path !== selectedPath) {
+      historyStack.current.push(selectedPath);
+    }
+    setSelectedPath(path);
+  }, [selectedPath]);
+
+  const goBack = useCallback(() => {
+    const prev = historyStack.current.pop();
+    if (prev) setSelectedPath(prev);
+  }, []);
+
+  const canGoBack = historyStack.current.length > 0;
 
   useEffect(() => {
     fetch("/api/tree")
@@ -87,12 +102,12 @@ export default function Home() {
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <SearchBar onSelect={setSelectedPath} />
+          <SearchBar onSelect={navigateTo} />
           <div className="flex-1 overflow-hidden">
             <TreeView
               entries={tree}
               selectedPath={selectedPath}
-              onSelect={setSelectedPath}
+              onSelect={navigateTo}
             />
           </div>
         </div>
@@ -110,7 +125,9 @@ export default function Home() {
             <DetailPanel
               filePath={selectedPath}
               fileRefs={fileRefs}
-              onNavigate={setSelectedPath}
+              onNavigate={navigateTo}
+              onGoBack={goBack}
+              canGoBack={canGoBack}
             />
           ) : (
             <div className="p-6 text-[var(--text-muted)] text-sm flex items-center justify-center h-full">
