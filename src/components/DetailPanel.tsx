@@ -5,7 +5,8 @@ import { Markdown, FileRef } from "./Markdown";
 import { HistoryPanel } from "./HistoryPanel";
 import { TableOfContents, HeadingInfo } from "./TableOfContents";
 import { PreviewPopup } from "./PreviewPopup";
-import { FileText, History } from "lucide-react";
+import { LinkGraph } from "./LinkGraph";
+import { FileText, History, Network } from "lucide-react";
 
 interface Props {
   filePath: string;
@@ -15,7 +16,7 @@ interface Props {
 
 export function DetailPanel({ filePath, fileRefs, onNavigate }: Props) {
   const [content, setContent] = useState<string | null>(null);
-  const [tab, setTab] = useState<"content" | "history">("content");
+  const [tab, setTab] = useState<"content" | "history" | "links">("content");
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -92,6 +93,17 @@ export function DetailPanel({ filePath, fileRefs, onNavigate }: Props) {
             <History size={12} />
             変更履歴
           </button>
+          <button
+            onClick={() => setTab("links")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${
+              tab === "links"
+                ? "bg-[var(--brand-primary)] text-white"
+                : "text-[var(--text-muted)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            <Network size={12} />
+            リンク
+          </button>
         </div>
       </div>
 
@@ -116,8 +128,10 @@ export function DetailPanel({ filePath, fileRefs, onNavigate }: Props) {
           ) : (
             <div className="p-4 text-[var(--text-muted)] text-sm">読み込み中...</div>
           )
-        ) : (
+        ) : tab === "history" ? (
           <HistoryPanel filePath={filePath} />
+        ) : (
+          <LinkGraph currentPath={filePath} onNavigate={(p) => onNavigate?.(p)} />
         )}
       </div>
 
