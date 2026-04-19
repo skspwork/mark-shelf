@@ -20,7 +20,7 @@ interface Props {
 
 export function TreeView({ entries, selectedPath, onSelect }: Props) {
   return (
-    <div className="h-full overflow-y-auto p-3 space-y-1.5 bg-[var(--bg-base)]">
+    <div className="h-full overflow-y-auto py-1 bg-[var(--bg-base)]">
       {entries.map((entry) => (
         <TreeNode
           key={entry.path}
@@ -58,64 +58,60 @@ function TreeNode({
 
   const handleClick = () => {
     if (isFolder) {
+      setCollapsed(!collapsed);
       if (entry.hasReadme) onSelect(entry.path + "/README.md");
     } else {
       onSelect(entry.path);
     }
   };
 
-  const handleDoubleClick = () => {
-    if (isFolder) setCollapsed(!collapsed);
+  const handleChevronClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsed(!collapsed);
   };
 
+  const indent = depth * 16 + 8;
+
   return (
-    <div>
+    <>
       <div
         onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
         className={`
-          rounded-lg border cursor-pointer transition-all duration-150
-          ${isFolder ? "px-3 py-2.5" : "px-2.5 py-2 ml-3"}
-          ${isSelected ? "ring-2 ring-[var(--brand-primary)] shadow-sm" : "hover:shadow-sm"}
+          flex items-center gap-1.5 cursor-pointer select-none
+          h-7 pr-2 text-[12px] leading-none transition-colors
+          ${isSelected
+            ? "bg-[var(--brand-primary)]/10 text-[var(--text-primary)]"
+            : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+          }
         `}
-        style={{
-          borderColor: isSelected
-            ? "var(--brand-primary)"
-            : isFolder ? "var(--folder-border)" : "var(--file-border)",
-          borderLeftWidth: isFolder ? 3 : 1,
-          backgroundColor: isFolder
-            ? "color-mix(in srgb, var(--folder-bg) 30%, white)"
-            : "var(--bg-surface)",
-        }}
+        style={{ paddingLeft: indent }}
       >
-        <div className="flex items-center gap-2">
-          {isFolder && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setCollapsed(!collapsed); }}
-              className="p-0.5 rounded hover:bg-[var(--bg-muted)] text-[var(--text-muted)] shrink-0"
-            >
-              {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
-            </button>
-          )}
-          {isFolder ? (
-            <Folder size={13} className="shrink-0" style={{ color: "var(--folder-border)" }} />
-          ) : (
-            <FileText size={13} className="shrink-0" style={{ color: "var(--file-border)" }} />
-          )}
+        {isFolder ? (
           <span
-            className={`truncate leading-snug ${
-              isFolder
-                ? "font-medium text-[13px] text-[var(--folder-text)]"
-                : "text-[12px] text-[var(--text-secondary)]"
-            }`}
+            onClick={handleChevronClick}
+            className="shrink-0 text-[var(--text-muted)] w-4 flex items-center justify-center hover:text-[var(--text-primary)]"
           >
-            {entry.displayName}
+            {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
           </span>
-        </div>
+        ) : (
+          <span className="shrink-0 w-4" />
+        )}
+        {isFolder ? (
+          <Folder size={14} className="shrink-0" style={{ color: "var(--folder-border)" }} />
+        ) : (
+          <FileText size={14} className="shrink-0" style={{ color: "var(--file-border)" }} />
+        )}
+        <span
+          className={`truncate ${
+            isFolder ? "font-medium text-[var(--folder-text)]" : ""
+          } ${isSelected ? "font-medium" : ""}`}
+        >
+          {entry.displayName}
+        </span>
       </div>
 
       {isFolder && !collapsed && entry.children && entry.children.length > 0 && (
-        <div className="mt-1 space-y-1 ml-3">
+        <>
           {entry.children.map((child) => (
             <TreeNode
               key={child.path}
@@ -125,8 +121,8 @@ function TreeNode({
               onSelect={onSelect}
             />
           ))}
-        </div>
+        </>
       )}
-    </div>
+    </>
   );
 }
