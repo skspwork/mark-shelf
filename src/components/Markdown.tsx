@@ -162,6 +162,7 @@ export function Markdown({
             className="text-[var(--brand-primary)] border-b border-dashed border-[var(--brand-primary)] cursor-pointer hover:bg-blue-50 transition-colors"
             onClick={(e) => {
               e.preventDefault();
+              onPreviewHide?.();
               onNavigate?.(targetPath);
             }}
             onMouseEnter={(e) => {
@@ -232,6 +233,7 @@ export function Markdown({
           className="text-[var(--brand-primary)] border-b border-dashed border-[var(--brand-primary)] cursor-pointer hover:bg-blue-50 transition-colors"
           onClick={(e) => {
             e.preventDefault();
+            onPreviewHide?.();
             onNavigate?.(targetPath);
           }}
           onMouseEnter={(e) => {

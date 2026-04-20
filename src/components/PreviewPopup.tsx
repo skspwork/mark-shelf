@@ -29,6 +29,10 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
   const nestedHideTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
+    // Cancel any pending nested popup timers whenever path changes
+    if (nestedShowTimer.current) clearTimeout(nestedShowTimer.current);
+    if (nestedHideTimer.current) clearTimeout(nestedHideTimer.current);
+
     if (!path) {
       setContent(null);
       setNestedPath(null);
@@ -85,11 +89,15 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
 
   const handleNestedEnter = useCallback(() => {
     if (nestedHideTimer.current) clearTimeout(nestedHideTimer.current);
-  }, []);
+    // Propagate upward so the parent popup's close timer is also cancelled
+    onMouseEnter();
+  }, [onMouseEnter]);
 
   const handleNestedLeave = useCallback(() => {
     handleNestedHide();
-  }, [handleNestedHide]);
+    // Propagate upward so the parent chain starts closing too
+    onMouseLeave();
+  }, [handleNestedHide, onMouseLeave]);
 
   if (!path || !position) return null;
 

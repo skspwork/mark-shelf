@@ -39,6 +39,11 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
   useEffect(() => {
     setContent(null);
     setHeadings([]);
+    // Clear preview popup state and cancel any pending timers on navigation
+    if (showTimer.current) clearTimeout(showTimer.current);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setPreviewPath(null);
+    setPreviewPos(null);
     fetch(`/api/file?path=${encodeURIComponent(filePath)}`)
       .then((r) => r.json())
       .then((data) => setContent(data.content ?? null))
