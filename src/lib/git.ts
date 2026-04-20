@@ -55,23 +55,18 @@ export async function getTimeline(maxCount = 100): Promise<TimelineEntry[]> {
   const git = getGit();
   try {
     const prefix = await getDocsPrefix();
-    // Restrict to .md files under the docs root directory
-    const pathPattern = prefix ? `${prefix}/**/*.md` : "*.md";
-    const pathPattern2 = prefix ? undefined : "**/*.md";
-
+    // git is invoked with cwd = docsRoot, so the pathspec must be cwd-relative.
+    // Default pathspec wildcards match "/" as well, so "*.md" covers all depths.
     const DELIM = "---COMMIT_BOUNDARY---";
-    const args = [
+    const log = await git.raw([
       "-c", "core.quotePath=false",
       "log",
       `--max-count=${maxCount}`,
       `--format=${DELIM}%n%H%n%h%n%aI%n%s%n%an`,
       "--name-only",
       "--diff-filter=ACDMR",
-      "--", pathPattern,
-    ];
-    if (pathPattern2) args.push(pathPattern2);
-
-    const log = await git.raw(args);
+      "--", "*.md",
+    ]);
 
     const entries: TimelineEntry[] = [];
     const blocks = log.split(DELIM).filter((b) => b.trim());

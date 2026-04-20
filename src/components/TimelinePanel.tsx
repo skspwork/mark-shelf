@@ -88,7 +88,7 @@ export function TimelinePanel({ onNavigate, onClose }: Props) {
             変更タイムライン
           </h2>
           <span className="text-[11px] text-[var(--text-muted)]">
-            リポジトリ全体の仕様変更履歴
+            リポジトリ全体の変更履歴
           </span>
           <button
             onClick={onClose}
@@ -106,7 +106,7 @@ export function TimelinePanel({ onNavigate, onClose }: Props) {
             </div>
           ) : entries.length === 0 ? (
             <div className="h-full flex items-center justify-center text-[13px] text-[var(--text-muted)]">
-              仕様変更の履歴がありません
+              変更履歴がありません
             </div>
           ) : (
             Array.from(grouped.entries()).map(([dateKey, dateEntries]) => (
