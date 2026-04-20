@@ -105,6 +105,16 @@ export function readFile(relPath: string): string | null {
   }
 }
 
+export function statFile(relPath: string): number | null {
+  const fullPath = path.resolve(DOCS_ROOT, relPath);
+  if (!fullPath.startsWith(path.resolve(DOCS_ROOT))) return null;
+  try {
+    return fs.statSync(fullPath).mtimeMs;
+  } catch {
+    return null;
+  }
+}
+
 export interface FileRef {
   path: string;
   displayName: string;

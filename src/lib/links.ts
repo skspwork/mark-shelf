@@ -71,3 +71,37 @@ export function buildLinkGraph(
 
   return { nodes, edges };
 }
+
+// ---- In-memory cache ----
+
+let cachedGraph: LinkGraph | null = null;
+let cachedSignature: string | null = null;
+
+function computeSignature(
+  files: FileRef[],
+  statFile: (path: string) => number | null,
+): string {
+  // Sort paths for stability, then join "path\0mtime"
+  const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path));
+  const parts: string[] = [];
+  for (const f of sorted) {
+    const mtime = statFile(f.path) ?? 0;
+    parts.push(`${f.path}\0${mtime}\0${f.displayName}`);
+  }
+  return parts.join("\n");
+}
+
+export function getCachedLinkGraph(
+  files: FileRef[],
+  readFile: (path: string) => string | null,
+  statFile: (path: string) => number | null,
+): LinkGraph {
+  const signature = computeSignature(files, statFile);
+  if (cachedGraph && cachedSignature === signature) {
+    return cachedGraph;
+  }
+  const graph = buildLinkGraph(files, readFile);
+  cachedGraph = graph;
+  cachedSignature = signature;
+  return graph;
+}
