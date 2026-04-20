@@ -6,10 +6,17 @@
   "bin": {
     "markshelf": "./bin/cli.mjs"
   },
+  "files": [
+    "bin",
+    ".next/standalone",
+    ".next/static",
+    "public"
+  ],
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start"
+    "build": "next build && node scripts/pack-static.mjs",
+    "start": "next start",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
