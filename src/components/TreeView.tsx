@@ -143,6 +143,8 @@ function TreeNode({
   const handleClick = () => {
     if (entry.type === "folder" && entry.hasReadme) {
       onSelect(entry.path + "/README.md");
+      // Expand children when clicking a collapsed README folder, but don't collapse when already expanded
+      if (hasChildren && !isExpanded) onToggle(entry.path);
     } else if (isFolder) {
       onToggle(entry.path);
     } else {
