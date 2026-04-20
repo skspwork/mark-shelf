@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GitCommit, FileText, ChevronDown, ChevronRight } from "lucide-react";
+import { GitCommit, FileText, ChevronDown, ChevronRight, X, Clock } from "lucide-react";
 import { DiffView } from "./DiffView";
 
 interface TimelineEntry {
@@ -15,6 +15,7 @@ interface TimelineEntry {
 
 interface Props {
   onNavigate: (path: string) => void;
+  onClose: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -38,7 +39,7 @@ function stripPrefix(name: string): string {
   return name.replace(/^\d+[_\-.\s]/, "").replace(/\.md$/i, "");
 }
 
-export function TimelinePanel({ onNavigate }: Props) {
+export function TimelinePanel({ onNavigate, onClose }: Props) {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedHash, setExpandedHash] = useState<string | null>(null);
@@ -55,21 +56,13 @@ export function TimelinePanel({ onNavigate }: Props) {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-[13px] text-[var(--text-muted)]">
-        タイムラインを読み込み中...
-      </div>
-    );
-  }
-
-  if (entries.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-[13px] text-[var(--text-muted)]">
-        仕様変更の履歴がありません
-      </div>
-    );
-  }
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   // Group entries by date
   const grouped = new Map<string, TimelineEntry[]>();
@@ -81,8 +74,42 @@ export function TimelinePanel({ onNavigate }: Props) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      {Array.from(grouped.entries()).map(([dateKey, dateEntries]) => (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[var(--bg-surface)] rounded-lg shadow-2xl w-[90vw] max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-[var(--border-default)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--border-default)] shrink-0">
+          <Clock size={14} className="text-[var(--brand-primary)]" />
+          <h2 className="font-semibold text-[14px] text-[var(--text-primary)]">
+            変更タイムライン
+          </h2>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            リポジトリ全体の仕様変更履歴
+          </span>
+          <button
+            onClick={onClose}
+            className="ml-auto p-1 rounded hover:bg-[var(--bg-muted)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+            title="閉じる (Esc)"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="h-full flex items-center justify-center text-[13px] text-[var(--text-muted)]">
+              タイムラインを読み込み中...
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-[13px] text-[var(--text-muted)]">
+              仕様変更の履歴がありません
+            </div>
+          ) : (
+            Array.from(grouped.entries()).map(([dateKey, dateEntries]) => (
         <div key={dateKey}>
           <div className="sticky top-0 z-10 bg-[var(--bg-base)] border-b border-[var(--border-default)] px-4 py-1.5">
             <span className="text-[11px] font-medium text-[var(--text-muted)] tracking-wide">
@@ -186,7 +213,10 @@ export function TimelinePanel({ onNavigate }: Props) {
             );
           })}
         </div>
-      ))}
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

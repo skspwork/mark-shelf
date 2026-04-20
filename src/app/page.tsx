@@ -136,9 +136,7 @@ export default function Home() {
         <div
           className="flex-1 border-l border-[var(--border-default)] bg-[var(--bg-surface)] overflow-hidden flex flex-col"
         >
-          {showTimeline ? (
-            <TimelinePanel onNavigate={(path) => { navigateTo(path); setShowTimeline(false); }} />
-          ) : selectedPath ? (
+          {selectedPath ? (
             <DetailPanel
               filePath={selectedPath}
               fileRefs={fileRefs}
@@ -153,6 +151,13 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {showTimeline && (
+        <TimelinePanel
+          onNavigate={(path) => { navigateTo(path); setShowTimeline(false); }}
+          onClose={() => setShowTimeline(false)}
+        />
+      )}
     </div>
   );
 }
