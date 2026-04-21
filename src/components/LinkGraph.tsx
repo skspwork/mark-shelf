@@ -18,12 +18,33 @@ interface Props {
   onNavigate: (path: string) => void;
 }
 
+const DEPTH_KEY = "markshelf:linkGraphDepth";
+const DEPTH_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "1階層" },
+  { value: 2, label: "2階層" },
+  { value: 3, label: "3階層" },
+  { value: Infinity, label: "全階層" },
+];
+
 export function LinkGraph({ currentPath, onNavigate }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [loading, setLoading] = useState(true);
   const [empty, setEmpty] = useState(false);
   const [ready, setReady] = useState(false);
+  const [depth, setDepth] = useState<number>(1);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(DEPTH_KEY);
+    if (saved === null) return;
+    const v = saved === "all" ? Infinity : Number(saved);
+    if (Number.isFinite(v) || v === Infinity) setDepth(v);
+  }, []);
+
+  const changeDepth = (d: number) => {
+    setDepth(d);
+    localStorage.setItem(DEPTH_KEY, d === Infinity ? "all" : String(d));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -37,18 +58,34 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
       .then((data: { nodes: GraphNode[]; edges: GraphEdge[] }) => {
         if (cancelled || !containerRef.current) return;
 
-        // Filter to show only nodes connected to currentPath (1-hop neighborhood)
-        const connectedPaths = new Set<string>();
-        connectedPaths.add(currentPath);
+        // Show only nodes reachable from currentPath (undirected connected component)
+        const adj = new Map<string, string[]>();
         for (const e of data.edges) {
-          if (e.source === currentPath) connectedPaths.add(e.target);
-          if (e.target === currentPath) connectedPaths.add(e.source);
+          (adj.get(e.source) ?? adj.set(e.source, []).get(e.source)!).push(e.target);
+          (adj.get(e.target) ?? adj.set(e.target, []).get(e.target)!).push(e.source);
+        }
+        const connectedPaths = new Set<string>([currentPath]);
+        const queue: [string, number][] = [[currentPath, 0]];
+        while (queue.length > 0) {
+          const [cur, lvl] = queue.shift()!;
+          if (lvl >= depth) continue;
+          for (const nb of adj.get(cur) ?? []) {
+            if (!connectedPaths.has(nb)) {
+              connectedPaths.add(nb);
+              queue.push([nb, lvl + 1]);
+            }
+          }
         }
 
         const localNodes = data.nodes.filter((n) => connectedPaths.has(n.id));
         const localEdges = data.edges.filter(
           (e) => connectedPaths.has(e.source) && connectedPaths.has(e.target),
         );
+
+        // roots = nodes with no incoming edge within the component
+        const hasIncoming = new Set<string>();
+        for (const e of localEdges) hasIncoming.add(e.target);
+        const rootPaths = localNodes.map((n) => n.id).filter((id) => !hasIncoming.has(id));
 
         if (localNodes.length === 0) {
           setEmpty(true);
@@ -93,7 +130,7 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
                 "border-color": "#3b7ddb",
                 width: 28,
                 height: 28,
-                "text-max-width": "100px",
+                "text-max-width": "180px",
                 "text-wrap": "ellipsis",
                 "cursor": "pointer",
               } as cytoscape.Css.Node,
@@ -128,14 +165,14 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
             },
           ],
           layout: {
-            name: "concentric",
+            name: "breadthfirst",
             animate: false,
             padding: 50,
-            minNodeSpacing: 80,
-            concentric: (node: cytoscape.NodeSingular) =>
-              node.data("isCurrent") ? 10 : 1,
-            levelWidth: () => 1,
-          } as cytoscape.ConcentricLayoutOptions,
+            spacingFactor: 1.2,
+            directed: true,
+            grid: false,
+            roots: rootPaths.length > 0 ? rootPaths : [currentPath],
+          } as cytoscape.BreadthFirstLayoutOptions,
           userZoomingEnabled: true,
           userPanningEnabled: true,
           boxSelectionEnabled: false,
@@ -199,10 +236,29 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
       cyRef.current?.destroy();
       cyRef.current = null;
     };
-  }, [currentPath, onNavigate]);
+  }, [currentPath, onNavigate, depth]);
 
   return (
     <div className="h-full flex flex-col relative">
+      <div className="flex items-center gap-1.5 px-3 py-2 shrink-0">
+        <span className="text-[11px] text-[var(--text-muted)] mr-1">表示範囲</span>
+        {DEPTH_OPTIONS.map((opt) => {
+          const active = depth === opt.value;
+          return (
+            <button
+              key={opt.label}
+              onClick={() => changeDepth(opt.value)}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+                active
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "text-[var(--text-muted)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-secondary)]"
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
       {(loading || empty) && (
         <div className="absolute inset-0 flex items-center justify-center text-[13px] text-[var(--text-muted)] z-10 bg-[var(--bg-surface)]">
           {loading ? "グラフを構築中..." : "このドキュメントへのリンクはありません"}
