@@ -246,6 +246,7 @@ export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onP
             directed: true,
             grid: false,
             roots: rootPaths.length > 0 ? rootPaths : [currentPath],
+            transform: (_node, pos) => ({ x: pos.x, y: -pos.y }),
           } as cytoscape.BreadthFirstLayoutOptions,
           userZoomingEnabled: true,
           userPanningEnabled: true,
