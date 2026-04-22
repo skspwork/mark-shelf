@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import cytoscape from "cytoscape";
+import { Filter } from "lucide-react";
 
 interface GraphNode {
   id: string;
@@ -13,12 +14,22 @@ interface GraphEdge {
   target: string;
 }
 
+interface FolderInfo {
+  path: string;
+  displayName: string;
+  depth: number;
+}
+
 interface Props {
   currentPath: string;
+  folders: FolderInfo[];
   onNavigate: (path: string) => void;
+  onPreviewShow?: (path: string, rect: DOMRect) => void;
+  onPreviewHide?: () => void;
 }
 
 const DEPTH_KEY = "markshelf:linkGraphDepth";
+const EXCLUDE_KEY = "markshelf:linkGraphExclude";
 const DEPTH_OPTIONS: { value: number; label: string }[] = [
   { value: 1, label: "1階層" },
   { value: 2, label: "2階層" },
@@ -26,13 +37,16 @@ const DEPTH_OPTIONS: { value: number; label: string }[] = [
   { value: Infinity, label: "全階層" },
 ];
 
-export function LinkGraph({ currentPath, onNavigate }: Props) {
+export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onPreviewHide }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const filterPopoverRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [empty, setEmpty] = useState(false);
   const [ready, setReady] = useState(false);
   const [depth, setDepth] = useState<number>(1);
+  const [excluded, setExcluded] = useState<string[]>([]);
+  const [showFilter, setShowFilter] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(DEPTH_KEY);
@@ -41,10 +55,64 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
     if (Number.isFinite(v) || v === Infinity) setDepth(v);
   }, []);
 
+  useEffect(() => {
+    const saved = localStorage.getItem(EXCLUDE_KEY);
+    if (!saved) return;
+    try {
+      const arr = JSON.parse(saved);
+      if (Array.isArray(arr)) setExcluded(arr.filter((s) => typeof s === "string"));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showFilter) return;
+    const onClick = (e: MouseEvent) => {
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target as Node)) {
+        setShowFilter(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [showFilter]);
+
   const changeDepth = (d: number) => {
     setDepth(d);
     localStorage.setItem(DEPTH_KEY, d === Infinity ? "all" : String(d));
   };
+
+  const toggleExclude = (folderPath: string) => {
+    setExcluded((prev) => {
+      const next = prev.includes(folderPath)
+        ? prev.filter((p) => p !== folderPath)
+        : [...prev, folderPath];
+      localStorage.setItem(EXCLUDE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const isPathExcluded = useMemo(() => {
+    const prefixes = excluded.map((f) => f + "/");
+    const currentExcluded = excluded.some(
+      (f) => currentPath === f || currentPath.startsWith(f + "/"),
+    );
+    return (p: string): boolean => {
+      if (currentExcluded) return false;
+      if (p === currentPath) return false;
+      return prefixes.some((pre) => p.startsWith(pre));
+    };
+  }, [excluded, currentPath]);
+
+  // Latest-callback refs to keep Cytoscape handlers without re-initializing on parent re-renders
+  const onNavigateRef = useRef(onNavigate);
+  const onPreviewShowRef = useRef(onPreviewShow);
+  const onPreviewHideRef = useRef(onPreviewHide);
+  useEffect(() => {
+    onNavigateRef.current = onNavigate;
+    onPreviewShowRef.current = onPreviewShow;
+    onPreviewHideRef.current = onPreviewHide;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -58,9 +126,15 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
       .then((data: { nodes: GraphNode[]; edges: GraphEdge[] }) => {
         if (cancelled || !containerRef.current) return;
 
+        // Apply folder exclusion filter
+        const filteredNodes = data.nodes.filter((n) => !isPathExcluded(n.id));
+        const filteredEdges = data.edges.filter(
+          (e) => !isPathExcluded(e.source) && !isPathExcluded(e.target),
+        );
+
         // Show only nodes reachable from currentPath (undirected connected component)
         const adj = new Map<string, string[]>();
-        for (const e of data.edges) {
+        for (const e of filteredEdges) {
           (adj.get(e.source) ?? adj.set(e.source, []).get(e.source)!).push(e.target);
           (adj.get(e.target) ?? adj.set(e.target, []).get(e.target)!).push(e.source);
         }
@@ -77,8 +151,8 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
           }
         }
 
-        const localNodes = data.nodes.filter((n) => connectedPaths.has(n.id));
-        const localEdges = data.edges.filter(
+        const localNodes = filteredNodes.filter((n) => connectedPaths.has(n.id));
+        const localEdges = filteredEdges.filter(
           (e) => connectedPaths.has(e.source) && connectedPaths.has(e.target),
         );
 
@@ -199,6 +273,26 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
             });
           }
           containerRef.current!.style.cursor = "pointer";
+
+          const path = node.id();
+          if (onPreviewShowRef.current && containerRef.current) {
+            const bb = node.renderedBoundingBox();
+            const cRect = containerRef.current.getBoundingClientRect();
+            const left = cRect.left + bb.x1;
+            const top = cRect.top + bb.y1;
+            const rect = {
+              left,
+              top,
+              right: cRect.left + bb.x2,
+              bottom: cRect.top + bb.y2,
+              width: bb.w,
+              height: bb.h,
+              x: left,
+              y: top,
+              toJSON: () => ({}),
+            } as DOMRect;
+            onPreviewShowRef.current(path, rect);
+          }
         });
 
         cy.on("mouseout", "node", (e) => {
@@ -211,13 +305,14 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
             });
           }
           containerRef.current!.style.cursor = "default";
+          onPreviewHideRef.current?.();
         });
 
         // Click to navigate
         cy.on("tap", "node", (e) => {
           const path = e.target.id();
           if (path !== currentPath) {
-            onNavigate(path);
+            onNavigateRef.current(path);
           }
         });
 
@@ -236,7 +331,7 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
       cyRef.current?.destroy();
       cyRef.current = null;
     };
-  }, [currentPath, onNavigate, depth]);
+  }, [currentPath, depth, isPathExcluded]);
 
   return (
     <div className="h-full flex flex-col relative">
@@ -258,6 +353,49 @@ export function LinkGraph({ currentPath, onNavigate }: Props) {
             </button>
           );
         })}
+        <div className="ml-auto relative" ref={filterPopoverRef}>
+          <button
+            onClick={() => setShowFilter((v) => !v)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+              excluded.length > 0
+                ? "bg-[var(--brand-primary)] text-white"
+                : "text-[var(--text-muted)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+            title="フォルダを除外"
+          >
+            <Filter size={11} />
+            除外
+            {excluded.length > 0 && <span className="ml-0.5">({excluded.length})</span>}
+          </button>
+          {showFilter && (
+            <div className="absolute right-0 top-full mt-1 w-56 max-h-72 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md shadow-lg z-20 py-1">
+              {folders.length === 0 ? (
+                <div className="px-3 py-2 text-[11px] text-[var(--text-muted)]">
+                  フォルダがありません
+                </div>
+              ) : (
+                folders.map((f) => {
+                  const checked = excluded.includes(f.path);
+                  return (
+                    <label
+                      key={f.path}
+                      className="flex items-center gap-2 px-3 py-1 text-[12px] cursor-pointer hover:bg-[var(--bg-muted)]"
+                      style={{ paddingLeft: `${12 + f.depth * 12}px` }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleExclude(f.path)}
+                        className="shrink-0"
+                      />
+                      <span className="truncate text-[var(--text-secondary)]">{f.displayName}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       </div>
       {(loading || empty) && (
         <div className="absolute inset-0 flex items-center justify-center text-[13px] text-[var(--text-muted)] z-10 bg-[var(--bg-surface)]">

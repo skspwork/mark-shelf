@@ -71,6 +71,20 @@ export default function Home() {
     return flatten(tree);
   }, [tree]);
 
+  const folders = useMemo(() => {
+    const result: { path: string; displayName: string; depth: number }[] = [];
+    function walk(entries: TreeEntry[], depth: number) {
+      for (const e of entries) {
+        if (e.type === "folder") {
+          result.push({ path: e.path, displayName: e.displayName, depth });
+          if (e.children) walk(e.children, depth + 1);
+        }
+      }
+    }
+    walk(tree, 0);
+    return result;
+  }, [tree]);
+
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     document.body.style.userSelect = "none";
@@ -140,6 +154,7 @@ export default function Home() {
             <DetailPanel
               filePath={selectedPath}
               fileRefs={fileRefs}
+              folders={folders}
               onNavigate={navigateTo}
               onGoBack={goBack}
               canGoBack={canGoBack}

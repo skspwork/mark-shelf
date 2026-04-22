@@ -8,15 +8,22 @@ import { PreviewPopup } from "./PreviewPopup";
 import { LinkGraph } from "./LinkGraph";
 import { FileText, History, Network, ArrowLeft } from "lucide-react";
 
+interface FolderInfo {
+  path: string;
+  displayName: string;
+  depth: number;
+}
+
 interface Props {
   filePath: string;
   fileRefs?: FileRef[];
+  folders?: FolderInfo[];
   onNavigate?: (path: string) => void;
   onGoBack?: () => void;
   canGoBack?: boolean;
 }
 
-export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBack }: Props) {
+export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack, canGoBack }: Props) {
   const [content, setContent] = useState<string | null>(null);
   const [tab, setTab] = useState<"content" | "history" | "links">("content");
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
@@ -195,7 +202,13 @@ export function DetailPanel({ filePath, fileRefs, onNavigate, onGoBack, canGoBac
         </div>
       ) : (
         <div className="flex-1 overflow-hidden">
-          <LinkGraph currentPath={filePath} onNavigate={(p) => onNavigate?.(p)} />
+          <LinkGraph
+            currentPath={filePath}
+            folders={folders ?? []}
+            onNavigate={(p) => onNavigate?.(p)}
+            onPreviewShow={handlePreviewShow}
+            onPreviewHide={handlePreviewHide}
+          />
         </div>
       )}
 

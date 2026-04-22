@@ -100,6 +100,53 @@ export function Markdown({
     return new RegExp(`(${escaped.join("|")})`, "g");
   }, [autolinkMap]);
 
+  const fileSet = useMemo(
+    () => new Set((fileRefs ?? []).map((f) => f.path)),
+    [fileRefs],
+  );
+
+  function resolveRelativeLink(href: string): string | null {
+    const cleanUrl = href.split("#")[0].split("?")[0].trim();
+    if (!cleanUrl) return null;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(cleanUrl)) return null;
+    if (cleanUrl.startsWith("//")) return null;
+
+    let decoded: string;
+    try {
+      decoded = decodeURI(cleanUrl);
+    } catch {
+      decoded = cleanUrl;
+    }
+
+    const currentDir =
+      currentPath && currentPath.includes("/")
+        ? currentPath.slice(0, currentPath.lastIndexOf("/"))
+        : "";
+    const joined = decoded.startsWith("/")
+      ? decoded.slice(1)
+      : currentDir
+        ? currentDir + "/" + decoded
+        : decoded;
+
+    const parts = joined.split("/");
+    const normalized: string[] = [];
+    for (const p of parts) {
+      if (p === "" || p === ".") continue;
+      if (p === "..") {
+        normalized.pop();
+        continue;
+      }
+      normalized.push(p);
+    }
+    const resolved = normalized.join("/");
+    if (!resolved) return null;
+
+    if (fileSet.has(resolved)) return resolved;
+    if (fileSet.has(resolved + "/README.md")) return resolved + "/README.md";
+    if (!/\.md$/i.test(resolved) && fileSet.has(resolved + ".md")) return resolved + ".md";
+    return null;
+  }
+
   function getIdForHeading(text: string): string {
     const ids = headingIdMap.get(text);
     if (!ids) return slugify(text) || "heading";
@@ -153,21 +200,29 @@ export function Markdown({
       }
       return <pre>{children}</pre>;
     },
-    // Auto-link rendering: intercept <a> with "autolink:" prefix
+    // Auto-link rendering: intercept <a> with "autolink:" prefix,
+    // and resolve relative markdown links to docs paths so they behave like autolinks.
     a: ({ href, children: linkChildren, ...rest }) => {
+      let targetPath: string | null = null;
       if (href?.startsWith("autolink:")) {
-        const targetPath = href.slice("autolink:".length);
+        targetPath = href.slice("autolink:".length);
+      } else if (href) {
+        targetPath = resolveRelativeLink(href);
+      }
+
+      if (targetPath) {
+        const resolved = targetPath;
         return (
           <span
-            className="text-[var(--brand-primary)] border-b border-dashed border-[var(--brand-primary)] cursor-pointer hover:bg-blue-50 transition-colors"
+            className="text-[var(--brand-primary)] font-medium cursor-pointer hover:underline transition-colors"
             onClick={(e) => {
               e.preventDefault();
               onPreviewHide?.();
-              onNavigate?.(targetPath);
+              onNavigate?.(resolved);
             }}
             onMouseEnter={(e) => {
               const rect = (e.target as HTMLElement).getBoundingClientRect();
-              onPreviewShow?.(targetPath, rect);
+              onPreviewShow?.(resolved, rect);
             }}
             onMouseLeave={() => onPreviewHide?.()}
           >
