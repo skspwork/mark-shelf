@@ -3,6 +3,26 @@
   "version": "0.1.5",
   "description": "Structured markdown viewer for git repositories",
   "license": "MIT",
+  "author": "sksp.work",
+  "homepage": "https://github.com/skspwork/mark-shelf#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skspwork/mark-shelf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/skspwork/mark-shelf/issues"
+  },
+  "keywords": [
+    "markdown",
+    "viewer",
+    "docs",
+    "documentation",
+    "git",
+    "nextjs",
+    "graph",
+    "knowledge-base",
+    "oss"
+  ],
   "bin": {
     "markshelf": "./bin/cli.mjs"
   },

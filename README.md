@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# markshelf
 
-## Getting Started
+[![npm version](https://img.shields.io/npm/v/markshelf.svg)](https://www.npmjs.com/package/markshelf)
+[![license](https://img.shields.io/npm/l/markshelf.svg)](./LICENSE)
+[![ghcr](https://img.shields.io/badge/ghcr.io-markshelf--base-blue)](https://github.com/skspwork/mark-shelf/pkgs/container/markshelf-base)
 
-First, run the development server:
+Git リポジトリ内の Markdown ドキュメントを「読むため」に特化した構造化ビューア。
+
+- 独立した全画面ブラウザビューアで疲れずに読める
+- ドキュメント間の依存をリンクグラフで俯瞰
+- リンクホバーで中身をポップアップ表示
+- ファイル保存が即反映（リロード不要）
+
+## クイックスタート
+
+### npx（ローカル閲覧）
+
+対象リポジトリのルートで：
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx markshelf
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`http://localhost:3000` で起動します。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Docker（配布・相乗り）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# ドキュメントをボリュームマウントで
+docker run --rm -p 3000:3000 \
+  -v "$PWD/docs:/docs" \
+  ghcr.io/skspwork/markshelf-base:latest
+```
 
-## Learn More
+自分のドキュメントを焼き込んだイメージを作りたい場合：
 
-To learn more about Next.js, take a look at the following resources:
+```dockerfile
+# your-project/Dockerfile
+FROM ghcr.io/skspwork/markshelf-base:latest
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+COPY .git /.git
+COPY docs /docs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# サブパスで配信するなら
+ENV BASE_PATH=/wiki
+```
 
-## Deploy on Vercel
+詳細は [docker/README.md](docker/README.md) を参照。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 主な機能
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **ツリービュー** — フォルダ展開/折りたたみ、状態永続化、検索
+- **リンクグラフ** — マークダウンリンク + 自動マッチで参照関係を有向グラフで表示、深さ切替、フォルダ除外フィルタ、拡大率永続化
+- **プレビューポップアップ** — リンクホバーで内容を即確認、ネスト対応
+- **変更履歴 / タイムライン** — git ログから自動生成
+- **ファイル共有 URL** — `?file=path/to/foo.md` で特定ファイルを直接開ける
+- **ファイル変更の自動反映** — エディタで保存 → ブラウザが自動更新（SSE）
+
+## 設定
+
+| 環境変数 | デフォルト | 説明 |
+|---------|----------|------|
+| `MARKSHELF_ROOT` | `process.cwd()` / Docker は `/docs` | ドキュメントルート |
+| `BASE_PATH` | なし | Next.js basePath（Docker のみ） |
+| `PORT` | `3000` | リッスンポート |
+
+## ドキュメント構成
+
+[docs/](docs/) 配下で要求定義 → 要件定義 → 仕様の 3 階層で自己文書化しています。書き方の規約は各カテゴリの README を参照:
+
+- [docs/要求定義/README.md](docs/要求定義/README.md)
+- [docs/要件定義/README.md](docs/要件定義/README.md)
+- [docs/仕様/README.md](docs/仕様/README.md)
+
+## 開発
+
+```bash
+npm install
+npm run dev
+```
+
+Next.js 16 + React 19 + Cytoscape + simple-git で構成。ローカルで dev サーバを立てる際は `MARKSHELF_ROOT` を指定しないと cwd（リポジトリ自身）がドキュメントルートになる点に注意。
+
+## ライセンス
+
+[MIT](./LICENSE) © sksp.work

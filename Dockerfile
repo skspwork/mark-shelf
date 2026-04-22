@@ -46,7 +46,7 @@ EXPOSE 3000
 # そのコピーが破棄されるため
 LABEL org.opencontainers.image.title="markshelf" \
       org.opencontainers.image.description="Structured markdown viewer for git repositories" \
-      org.opencontainers.image.source="https://github.com/sksp-work/mark-shelf" \
+      org.opencontainers.image.source="https://github.com/skspwork/mark-shelf" \
       org.opencontainers.image.licenses="MIT"
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

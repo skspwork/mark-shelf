@@ -1,13 +1,13 @@
 # markshelf Docker image
 
-`ghcr.io/sksp-work/markshelf-base` は `FROM` で拡張して使える markshelf のベースイメージです。自分のドキュメントをコピーするか、ボリュームマウントするだけで、複数 basePath・複数インスタンスを同一ポートに相乗りさせられます。起動時に Next.js のビルドがコンテナ内で走る設計なので、basePath を環境変数だけで差し替えられます。
+`ghcr.io/skspwork/markshelf-base` は `FROM` で拡張して使える markshelf のベースイメージです。自分のドキュメントをコピーするか、ボリュームマウントするだけで、複数 basePath・複数インスタンスを同一ポートに相乗りさせられます。起動時に Next.js のビルドがコンテナ内で走る設計なので、basePath を環境変数だけで差し替えられます。
 
 ## 最速の使い方（ボリュームマウント）
 
 ```bash
 docker run --rm -p 3000:3000 \
   -v "$PWD/docs:/docs" \
-  ghcr.io/sksp-work/markshelf-base:latest
+  ghcr.io/skspwork/markshelf-base:latest
 ```
 
 `http://localhost:3000` で起動します。デフォルト basePath はなし。
@@ -18,7 +18,7 @@ docker run --rm -p 3000:3000 \
 docker run --rm -p 3000:3000 \
   -v "$PWD/docs:/docs" \
   -e BASE_PATH=/wiki \
-  ghcr.io/sksp-work/markshelf-base:latest
+  ghcr.io/skspwork/markshelf-base:latest
 ```
 
 `http://localhost:3000/wiki` で起動します。起動時に `next build` が走るため初回は 20〜40 秒かかります。同じ basePath の再起動ならスタンプファイルでスキップされます。
@@ -29,7 +29,7 @@ docker run --rm -p 3000:3000 \
 
 ```dockerfile
 # your-project/Dockerfile
-FROM ghcr.io/sksp-work/markshelf-base:latest
+FROM ghcr.io/skspwork/markshelf-base:latest
 
 # docs を /docs に配置するだけで良い
 COPY ./docs /docs
