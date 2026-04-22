@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { GitCommit, ChevronDown, ChevronRight } from "lucide-react";
 import { DiffView } from "./DiffView";
+import { useRefreshTick } from "@/lib/useRefreshTick";
 
 interface CommitEntry {
   hash: string;
@@ -20,6 +21,7 @@ export function HistoryPanel({ filePath }: Props) {
   const [history, setHistory] = useState<CommitEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedHash, setExpandedHash] = useState<string | null>(null);
+  const refreshTick = useRefreshTick();
 
   useEffect(() => {
     setLoading(true);
@@ -31,7 +33,7 @@ export function HistoryPanel({ filePath }: Props) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [filePath]);
+  }, [filePath, refreshTick]);
 
   if (loading) {
     return <div className="p-4 text-[var(--text-muted)] text-[13px]">読み込み中...</div>;

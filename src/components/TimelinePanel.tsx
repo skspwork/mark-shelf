@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { GitCommit, FileText, ChevronDown, ChevronRight, X, Clock } from "lucide-react";
 import { DiffView } from "./DiffView";
+import { useRefreshTick } from "@/lib/useRefreshTick";
 
 interface TimelineEntry {
   hash: string;
@@ -44,6 +45,7 @@ export function TimelinePanel({ onNavigate, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [expandedHash, setExpandedHash] = useState<string | null>(null);
   const [expandedFile, setExpandedFile] = useState<{ hash: string; file: string } | null>(null);
+  const refreshTick = useRefreshTick();
 
   useEffect(() => {
     setLoading(true);
@@ -54,7 +56,7 @@ export function TimelinePanel({ onNavigate, onClose }: Props) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

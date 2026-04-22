@@ -5,6 +5,7 @@ import { TreeView } from "@/components/TreeView";
 import { DetailPanel } from "@/components/DetailPanel";
 import { SearchBar } from "@/components/SearchBar";
 import { TimelinePanel } from "@/components/TimelinePanel";
+import { useRefreshTick } from "@/lib/useRefreshTick";
 import { Clock } from "lucide-react";
 
 interface TreeEntry {
@@ -51,6 +52,7 @@ export default function Home() {
 
   const canGoBack = backStack.length > 0;
   const canGoForward = forwardStack.length > 0;
+  const refreshTick = useRefreshTick();
 
   useEffect(() => {
     fetch("/api/tree")
@@ -59,7 +61,7 @@ export default function Home() {
         setTree(data.tree ?? []);
         setRoot(data.root ?? "");
       });
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     const saved = localStorage.getItem("markshelf:treeWidth");

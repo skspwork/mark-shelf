@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import cytoscape from "cytoscape";
+import { useRefreshTick } from "@/lib/useRefreshTick";
 import { Filter } from "lucide-react";
 
 interface GraphNode {
@@ -48,6 +49,7 @@ export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onP
   const [depth, setDepth] = useState<number>(1);
   const [excluded, setExcluded] = useState<string[]>([]);
   const [showFilter, setShowFilter] = useState(false);
+  const refreshTick = useRefreshTick();
 
   useEffect(() => {
     const saved = localStorage.getItem(DEPTH_KEY);
@@ -361,7 +363,7 @@ export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onP
       cyRef.current?.destroy();
       cyRef.current = null;
     };
-  }, [currentPath, depth, isPathExcluded]);
+  }, [currentPath, depth, isPathExcluded, refreshTick]);
 
   return (
     <div className="h-full flex flex-col relative">

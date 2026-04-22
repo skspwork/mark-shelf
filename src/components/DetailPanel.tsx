@@ -6,6 +6,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { TableOfContents, HeadingInfo } from "./TableOfContents";
 import { PreviewPopup } from "./PreviewPopup";
 import { LinkGraph } from "./LinkGraph";
+import { useRefreshTick } from "@/lib/useRefreshTick";
 import { FileText, History, Network, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface FolderInfo {
@@ -44,20 +45,23 @@ export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack,
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const refreshTick = useRefreshTick();
 
   useEffect(() => {
     setContent(null);
     setHeadings([]);
-    // Clear preview popup state and cancel any pending timers on navigation
     if (showTimer.current) clearTimeout(showTimer.current);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     setPreviewPath(null);
     setPreviewPos(null);
+  }, [filePath]);
+
+  useEffect(() => {
     fetch(`/api/file?path=${encodeURIComponent(filePath)}`)
       .then((r) => r.json())
       .then((data) => setContent(data.content ?? null))
       .catch(() => setContent(null));
-  }, [filePath]);
+  }, [filePath, refreshTick]);
 
   const handlePreviewShow = useCallback((path: string, rect: DOMRect) => {
     if (hideTimer.current) clearTimeout(hideTimer.current);

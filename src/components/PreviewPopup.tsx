@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Markdown, FileRef } from "./Markdown";
+import { useRefreshTick } from "@/lib/useRefreshTick";
 import { ExternalLink } from "lucide-react";
 
 interface Props {
@@ -27,6 +28,7 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
   const [nestedPos, setNestedPos] = useState<{ x: number; y: number } | null>(null);
   const nestedShowTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const nestedHideTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const refreshTick = useRefreshTick();
 
   useEffect(() => {
     // Cancel any pending nested popup timers whenever path changes
@@ -48,7 +50,7 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
       .then((data) => setContent(data.content ?? null))
       .catch(() => setContent(null))
       .finally(() => setLoading(false));
-  }, [path]);
+  }, [path, refreshTick]);
 
   // Adjust position to stay within viewport
   useEffect(() => {
