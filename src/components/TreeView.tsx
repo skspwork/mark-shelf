@@ -18,6 +18,8 @@ interface Props {
   onSelect: (path: string) => void;
 }
 
+const EXPANDED_KEY = "markshelf:treeExpanded";
+
 /** Collect all folder paths that are ancestors of targetPath */
 function getAncestorPaths(entries: TreeEntry[], targetPath: string): Set<string> {
   const result = new Set<string>();
@@ -47,17 +49,42 @@ function getAncestorPaths(entries: TreeEntry[], targetPath: string): Set<string>
 }
 
 export function TreeView({ entries, selectedPath, onSelect }: Props) {
-  // Track which folders are expanded (by path)
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    // Initially expand top-level hasReadme folders
-    const initial = new Set<string>();
-    for (const e of entries) {
-      if (e.type === "folder" && e.hasReadme) {
-        initial.add(e.path);
+  // Track which folders are expanded (by path). Hydrated from localStorage on mount.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const hydratedRef = useRef(false);
+
+  // Load saved state once on mount; if none, default to expanding top-level hasReadme folders.
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    const saved = localStorage.getItem(EXPANDED_KEY);
+    if (saved) {
+      try {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) {
+          setExpanded(new Set(arr.filter((s) => typeof s === "string")));
+          hydratedRef.current = true;
+          return;
+        }
+      } catch {
+        /* ignore */
       }
     }
-    return initial;
-  });
+    // No saved state: expand top-level hasReadme folders as the default.
+    if (entries.length > 0) {
+      const initial = new Set<string>();
+      for (const e of entries) {
+        if (e.type === "folder" && e.hasReadme) initial.add(e.path);
+      }
+      setExpanded(initial);
+      hydratedRef.current = true;
+    }
+  }, [entries]);
+
+  // Persist expanded state to localStorage (only after hydration, to avoid overwriting with empty set).
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    localStorage.setItem(EXPANDED_KEY, JSON.stringify([...expanded]));
+  }, [expanded]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLDivElement>(null);
