@@ -15,6 +15,64 @@ export interface LinkGraph {
   edges: GraphEdge[];
 }
 
+// Matches markdown link `[label](url)` excluding image syntax `![...]`.
+// The leading capture group absorbs a non-"!" char (or string start) to avoid
+// matching image links.
+const LINK_RE = /(^|[^!])\[([^\]]*)\]\(([^)]+)\)/g;
+// Fenced code blocks (``` or ~~~) — stripped before scanning
+const FENCE_RE = /(^|\n)(```|~~~)[^\n]*\n[\s\S]*?\n\2/g;
+// Inline code `...`
+const INLINE_CODE_RE = /`[^`\n]*`/g;
+
+function stripCode(content: string): string {
+  return content.replace(FENCE_RE, "").replace(INLINE_CODE_RE, "");
+}
+
+function resolveLink(
+  currentPath: string,
+  rawUrl: string,
+  fileSet: Set<string>,
+): string | null {
+  const cleanUrl = rawUrl.split("#")[0].split("?")[0].trim();
+  if (!cleanUrl) return null;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(cleanUrl)) return null;
+  if (cleanUrl.startsWith("//")) return null;
+
+  let decoded: string;
+  try {
+    decoded = decodeURI(cleanUrl);
+  } catch {
+    decoded = cleanUrl;
+  }
+
+  const currentDir = currentPath.includes("/")
+    ? currentPath.slice(0, currentPath.lastIndexOf("/"))
+    : "";
+  const joined = decoded.startsWith("/")
+    ? decoded.slice(1)
+    : currentDir
+      ? currentDir + "/" + decoded
+      : decoded;
+
+  const parts = joined.split("/");
+  const normalized: string[] = [];
+  for (const p of parts) {
+    if (p === "" || p === ".") continue;
+    if (p === "..") {
+      normalized.pop();
+      continue;
+    }
+    normalized.push(p);
+  }
+  const resolved = normalized.join("/");
+  if (!resolved) return null;
+
+  if (fileSet.has(resolved)) return resolved;
+  if (fileSet.has(resolved + "/README.md")) return resolved + "/README.md";
+  if (!/\.md$/i.test(resolved) && fileSet.has(resolved + ".md")) return resolved + ".md";
+  return null;
+}
+
 export function buildLinkGraph(
   files: FileRef[],
   readFile: (path: string) => string | null,
@@ -23,43 +81,59 @@ export function buildLinkGraph(
     .filter((f) => f.displayName.length > 2)
     .sort((a, b) => b.displayName.length - a.displayName.length);
 
-  if (filtered.length === 0) return { nodes: [], edges: [] };
-
-  // Build regex from all displayNames
-  const escaped = filtered.map((f) =>
-    f.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-  );
-  const regex = new RegExp(`(${escaped.join("|")})`, "g");
-
-  // Map displayName → path for lookup
+  const fileSet = new Set(files.map((f) => f.path));
   const nameToPath = new Map<string, string>();
   for (const f of filtered) {
     nameToPath.set(f.displayName, f.path);
   }
 
+  const displayNameRegex =
+    filtered.length === 0
+      ? null
+      : new RegExp(
+          `(${filtered
+            .map((f) => f.displayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+            .join("|")})`,
+          "g",
+        );
+
   const edgeSet = new Set<string>();
   const referencedPaths = new Set<string>();
 
+  const addEdge = (source: string, target: string) => {
+    if (target === source) return;
+    const key = `${source}\0${target}`;
+    if (edgeSet.has(key)) return;
+    edgeSet.add(key);
+    referencedPaths.add(source);
+    referencedPaths.add(target);
+  };
+
   for (const file of files) {
-    const content = readFile(file.path);
-    if (!content) continue;
+    const raw = readFile(file.path);
+    if (!raw) continue;
+    let content = stripCode(raw);
 
-    regex.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(content)) !== null) {
-      const targetPath = nameToPath.get(match[0]);
-      if (!targetPath || targetPath === file.path) continue;
+    // 1) Explicit markdown links: resolve URL → add edge, then strip (url) portion
+    //    so URL path segments don't create spurious displayName matches.
+    content = content.replace(LINK_RE, (_m, lead, label, url) => {
+      const target = resolveLink(file.path, url, fileSet);
+      if (target) addEdge(file.path, target);
+      return `${lead}[${label}]`;
+    });
 
-      const key = `${file.path}\0${targetPath}`;
-      if (!edgeSet.has(key)) {
-        edgeSet.add(key);
-        referencedPaths.add(file.path);
-        referencedPaths.add(targetPath);
+    // 2) DisplayName auto-matching on the stripped content
+    if (displayNameRegex) {
+      displayNameRegex.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = displayNameRegex.exec(content)) !== null) {
+        const targetPath = nameToPath.get(match[0]);
+        if (!targetPath) continue;
+        addEdge(file.path, targetPath);
       }
     }
   }
 
-  // Only include nodes that have at least one edge
   const nodes: GraphNode[] = files
     .filter((f) => referencedPaths.has(f.path))
     .map((f) => ({ id: f.path, label: f.displayName }));
@@ -81,7 +155,6 @@ function computeSignature(
   files: FileRef[],
   statFile: (path: string) => number | null,
 ): string {
-  // Sort paths for stability, then join "path\0mtime"
   const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path));
   const parts: string[] = [];
   for (const f of sorted) {
