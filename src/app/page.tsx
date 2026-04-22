@@ -17,6 +17,14 @@ interface TreeEntry {
   hasReadme?: boolean;
 }
 
+const FILE_QUERY_KEY = "file";
+
+function readFileFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const v = new URL(window.location.href).searchParams.get(FILE_QUERY_KEY);
+  return v ? decodeURIComponent(v) : null;
+}
+
 export default function Home() {
   const [tree, setTree] = useState<TreeEntry[]>([]);
   const [root, setRoot] = useState<string>("");
@@ -25,6 +33,27 @@ export default function Home() {
   const [showTimeline, setShowTimeline] = useState(false);
   const [backStack, setBackStack] = useState<string[]>([]);
   const [forwardStack, setForwardStack] = useState<string[]>([]);
+
+  // Initial hydration from URL (?file=...)
+  useEffect(() => {
+    const fromUrl = readFileFromUrl();
+    if (fromUrl) setSelectedPath(fromUrl);
+  }, []);
+
+  // Keep URL in sync with selectedPath (shareable links)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (selectedPath) {
+      url.searchParams.set(FILE_QUERY_KEY, selectedPath);
+    } else {
+      url.searchParams.delete(FILE_QUERY_KEY);
+    }
+    const next = url.pathname + (url.search ? url.search : "") + url.hash;
+    if (next !== window.location.pathname + window.location.search + window.location.hash) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [selectedPath]);
 
   const navigateTo = useCallback((path: string | null) => {
     if (selectedPath && path !== selectedPath) {
