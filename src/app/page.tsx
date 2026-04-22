@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { TreeView } from "@/components/TreeView";
 import { DetailPanel } from "@/components/DetailPanel";
 import { SearchBar } from "@/components/SearchBar";
@@ -22,21 +22,35 @@ export default function Home() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [treeWidth, setTreeWidth] = useState(260);
   const [showTimeline, setShowTimeline] = useState(false);
-  const historyStack = useRef<string[]>([]);
+  const [backStack, setBackStack] = useState<string[]>([]);
+  const [forwardStack, setForwardStack] = useState<string[]>([]);
 
   const navigateTo = useCallback((path: string | null) => {
     if (selectedPath && path !== selectedPath) {
-      historyStack.current.push(selectedPath);
+      setBackStack((s) => [...s, selectedPath]);
+      setForwardStack([]);
     }
     setSelectedPath(path);
   }, [selectedPath]);
 
   const goBack = useCallback(() => {
-    const prev = historyStack.current.pop();
-    if (prev) setSelectedPath(prev);
-  }, []);
+    if (backStack.length === 0) return;
+    const prev = backStack[backStack.length - 1];
+    if (selectedPath) setForwardStack((s) => [...s, selectedPath]);
+    setBackStack((s) => s.slice(0, -1));
+    setSelectedPath(prev);
+  }, [backStack, selectedPath]);
 
-  const canGoBack = historyStack.current.length > 0;
+  const goForward = useCallback(() => {
+    if (forwardStack.length === 0) return;
+    const next = forwardStack[forwardStack.length - 1];
+    if (selectedPath) setBackStack((s) => [...s, selectedPath]);
+    setForwardStack((s) => s.slice(0, -1));
+    setSelectedPath(next);
+  }, [forwardStack, selectedPath]);
+
+  const canGoBack = backStack.length > 0;
+  const canGoForward = forwardStack.length > 0;
 
   useEffect(() => {
     fetch("/api/tree")
@@ -157,7 +171,9 @@ export default function Home() {
               folders={folders}
               onNavigate={navigateTo}
               onGoBack={goBack}
+              onGoForward={goForward}
               canGoBack={canGoBack}
+              canGoForward={canGoForward}
             />
           ) : (
             <div className="p-6 text-[var(--text-muted)] text-sm flex items-center justify-center h-full">

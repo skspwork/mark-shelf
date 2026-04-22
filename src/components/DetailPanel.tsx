@@ -6,7 +6,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { TableOfContents, HeadingInfo } from "./TableOfContents";
 import { PreviewPopup } from "./PreviewPopup";
 import { LinkGraph } from "./LinkGraph";
-import { FileText, History, Network, ArrowLeft } from "lucide-react";
+import { FileText, History, Network, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface FolderInfo {
   path: string;
@@ -20,10 +20,12 @@ interface Props {
   folders?: FolderInfo[];
   onNavigate?: (path: string) => void;
   onGoBack?: () => void;
+  onGoForward?: () => void;
   canGoBack?: boolean;
+  canGoForward?: boolean;
 }
 
-export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack, canGoBack }: Props) {
+export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack, onGoForward, canGoBack, canGoForward }: Props) {
   const [content, setContent] = useState<string | null>(null);
   const [tab, setTab] = useState<"content" | "history" | "links">("content");
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
@@ -118,6 +120,15 @@ export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack,
               title="戻る"
             >
               <ArrowLeft size={14} />
+            </button>
+          )}
+          {canGoForward && (
+            <button
+              onClick={onGoForward}
+              className="shrink-0 p-0.5 rounded hover:bg-[var(--bg-muted)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              title="進む"
+            >
+              <ArrowRight size={14} />
             </button>
           )}
           <h2 className="font-semibold text-[14px] leading-snug truncate text-[var(--text-primary)]">
