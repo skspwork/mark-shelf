@@ -37,7 +37,7 @@
     "build": "next build && node scripts/pack-static.mjs",
     "start": "next start",
     "docker:build": "docker build -t markshelf-base .",
-    "docker:run": "docker run --rm -p 3000:3000 -v \"$PWD/docs\":/docs markshelf-base",
+    "docker:run": "node scripts/docker-run.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
