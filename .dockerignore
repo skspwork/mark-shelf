@@ -1,0 +1,30 @@
+node_modules
+.next
+out
+dist
+.turbo
+
+# Docs sample (users mount their own via -v)
+docs
+
+# VCS / local
+.git
+.gitignore
+.github
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+npm-debug.log*
+
+# Build-time only
+scripts/pack-static.mjs
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.yaml

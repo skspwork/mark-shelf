@@ -1,6 +1,6 @@
 {
   "name": "markshelf",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Structured markdown viewer for git repositories",
   "license": "MIT",
   "bin": {
@@ -16,6 +16,8 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build && node scripts/pack-static.mjs",
     "start": "next start",
+    "docker:build": "docker build -t markshelf-base .",
+    "docker:run": "docker run --rm -p 3000:3000 -v \"$PWD/docs\":/docs markshelf-base",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
