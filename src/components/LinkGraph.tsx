@@ -30,6 +30,7 @@ interface Props {
 
 const DEPTH_KEY = "markshelf:linkGraphDepth";
 const EXCLUDE_KEY = "markshelf:linkGraphExclude";
+const ZOOM_KEY = "markshelf:linkGraphZoom";
 const DEPTH_OPTIONS: { value: number; label: string }[] = [
   { value: 1, label: "1階層" },
   { value: 2, label: "2階層" },
@@ -257,10 +258,38 @@ export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onP
         // Defer fit/center until container has layout dimensions
         requestAnimationFrame(() => {
           cy.resize();
-          cy.fit(undefined, 50);
-          if (cy.zoom() > 1.2) cy.zoom({ level: 1.2, renderedPosition: { x: containerRef.current!.clientWidth / 2, y: containerRef.current!.clientHeight / 2 } });
+          const savedZoom = Number(localStorage.getItem(ZOOM_KEY));
+          if (Number.isFinite(savedZoom) && savedZoom > 0) {
+            cy.zoom({
+              level: savedZoom,
+              renderedPosition: {
+                x: containerRef.current!.clientWidth / 2,
+                y: containerRef.current!.clientHeight / 2,
+              },
+            });
+          } else {
+            cy.fit(undefined, 50);
+            if (cy.zoom() > 0.9) {
+              cy.zoom({
+                level: 0.9,
+                renderedPosition: {
+                  x: containerRef.current!.clientWidth / 2,
+                  y: containerRef.current!.clientHeight / 2,
+                },
+              });
+            }
+          }
           cy.center(cy.nodes("[?isCurrent]"));
           setReady(true);
+        });
+
+        // Persist zoom level on user interaction (debounced)
+        let zoomWriteTimer: ReturnType<typeof setTimeout> | null = null;
+        cy.on("zoom", () => {
+          if (zoomWriteTimer) clearTimeout(zoomWriteTimer);
+          zoomWriteTimer = setTimeout(() => {
+            localStorage.setItem(ZOOM_KEY, String(cy.zoom()));
+          }, 200);
         });
 
         // Hover effects

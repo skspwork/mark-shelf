@@ -113,7 +113,7 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
           // Also hide nested if mouse leaves this popup entirely
           handleNestedHide();
         }}
-        className="fixed bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg shadow-xl w-[480px] max-h-[420px] overflow-y-auto"
+        className="fixed bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg shadow-xl w-[min(480px,30vw)] max-h-[min(420px,30vh)] overflow-y-auto"
         style={{
           left: adjustedPos?.x ?? position.x,
           top: adjustedPos?.y ?? position.y,

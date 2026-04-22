@@ -170,7 +170,10 @@ export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack,
                   onHeadingsExtracted={setHeadings}
                   fileRefs={fileRefs}
                   currentPath={filePath}
-                  onNavigate={onNavigate}
+                  onNavigate={(p) => {
+                    setTab("content");
+                    onNavigate?.(p);
+                  }}
                   onPreviewShow={handlePreviewShow}
                   onPreviewHide={handlePreviewHide}
                 >
@@ -218,6 +221,7 @@ export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack,
         onNavigate={(p) => {
           setPreviewPath(null);
           setPreviewPos(null);
+          setTab("content");
           onNavigate?.(p);
         }}
         onMouseEnter={handlePreviewEnter}
