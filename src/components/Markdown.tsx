@@ -5,6 +5,7 @@ import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { HeadingInfo } from "./TableOfContents";
 import { MermaidBlock } from "./MermaidBlock";
+import { withBasePath } from "@/lib/basePath";
 
 export interface FileRef {
   displayName: string;
@@ -147,6 +148,43 @@ export function Markdown({
     return null;
   }
 
+  function resolveAssetPath(src: string): string | null {
+    const cleanUrl = src.split("#")[0].split("?")[0].trim();
+    if (!cleanUrl) return null;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(cleanUrl)) return null;
+    if (cleanUrl.startsWith("//")) return null;
+
+    let decoded: string;
+    try {
+      decoded = decodeURI(cleanUrl);
+    } catch {
+      decoded = cleanUrl;
+    }
+
+    const currentDir =
+      currentPath && currentPath.includes("/")
+        ? currentPath.slice(0, currentPath.lastIndexOf("/"))
+        : "";
+    const joined = decoded.startsWith("/")
+      ? decoded.slice(1)
+      : currentDir
+        ? currentDir + "/" + decoded
+        : decoded;
+
+    const parts = joined.split("/");
+    const normalized: string[] = [];
+    for (const p of parts) {
+      if (p === "" || p === ".") continue;
+      if (p === "..") {
+        normalized.pop();
+        continue;
+      }
+      normalized.push(p);
+    }
+    const resolved = normalized.join("/");
+    return resolved || null;
+  }
+
   function getIdForHeading(text: string): string {
     const ids = headingIdMap.get(text);
     if (!ids) return slugify(text) || "heading";
@@ -231,6 +269,17 @@ export function Markdown({
         );
       }
       return <a href={href} {...rest}>{linkChildren}</a>;
+    },
+    // Images: rewrite relative src to the asset API so files under DOCS_ROOT
+    // are reachable; leave absolute, data:, and protocol-relative URLs alone.
+    img: ({ src, alt, ...rest }) => {
+      if (typeof src !== "string") {
+        return <img src={src as string | undefined} alt={alt} {...rest} />;
+      }
+      const resolved = resolveAssetPath(src);
+      if (!resolved) return <img src={src} alt={alt} {...rest} />;
+      const apiSrc = withBasePath(`/api/asset?path=${encodeURIComponent(resolved)}`);
+      return <img src={apiSrc} alt={alt} {...rest} />;
     },
     // Inject auto-links into text content
     p: ({ children: pChildren, ...rest }) => {

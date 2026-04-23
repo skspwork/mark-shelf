@@ -105,6 +105,18 @@ export function readFile(relPath: string): string | null {
   }
 }
 
+export function readAsset(relPath: string): Buffer | null {
+  const fullPath = path.resolve(DOCS_ROOT, relPath);
+  if (!fullPath.startsWith(path.resolve(DOCS_ROOT))) return null;
+  try {
+    const stat = fs.statSync(fullPath);
+    if (!stat.isFile()) return null;
+    return fs.readFileSync(fullPath);
+  } catch {
+    return null;
+  }
+}
+
 export function statFile(relPath: string): number | null {
   const fullPath = path.resolve(DOCS_ROOT, relPath);
   if (!fullPath.startsWith(path.resolve(DOCS_ROOT))) return null;
