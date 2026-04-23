@@ -35,9 +35,25 @@ function slugify(text: string): string {
 function parseHeadings(markdown: string): HeadingInfo[] {
   const headings: HeadingInfo[] = [];
   const seen = new Map<string, number>();
-  const re = /^(#{1,4})\s+(.+)$/gm;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(markdown)) !== null) {
+  const headingRe = /^(#{1,4})\s+(.+)$/;
+  const fenceRe = /^[ \t]*(`{3,}|~{3,})/;
+  let fence: string | null = null;
+  for (const line of markdown.split("\n")) {
+    const fenceMatch = fenceRe.exec(line);
+    if (fenceMatch) {
+      const marker = fenceMatch[1][0];
+      if (fence === null) {
+        fence = marker;
+        continue;
+      }
+      if (fenceMatch[1].startsWith(fence)) {
+        fence = null;
+        continue;
+      }
+    }
+    if (fence !== null) continue;
+    const m = headingRe.exec(line);
+    if (!m) continue;
     const level = m[1].length;
     const text = m[2].replace(/[#*_`[\]]/g, "").trim();
     const base = slugify(text) || "heading";
