@@ -32,7 +32,9 @@ COPY . .
 # なら再ビルドをスキップする設計（= ユーザーが BASE_PATH を指定した
 # 場合だけコンテナ内で `next build` が追加で走る）
 RUN npx next build \
-    && mkdir -p .next \
+    && mkdir -p .next/standalone/.next \
+    && cp -r .next/static .next/standalone/.next/static \
+    && if [ -d public ]; then cp -r public .next/standalone/public; fi \
     && printf '__none__' > .next/markshelf-basepath
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
