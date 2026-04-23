@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { withBasePath } from "@/lib/basePath";
 
 interface Props {
   filePath: string;
@@ -12,7 +13,7 @@ export function DiffView({ filePath, hash }: Props) {
 
   useEffect(() => {
     setDiff(null);
-    fetch(`/api/diff?path=${encodeURIComponent(filePath)}&hash=${hash}`)
+    fetch(withBasePath(`/api/diff?path=${encodeURIComponent(filePath)}&hash=${hash}`))
       .then((r) => r.json())
       .then((data) => setDiff(data.diff))
       .catch(() => setDiff("(差分を取得できませんでした)"));

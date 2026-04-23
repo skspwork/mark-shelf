@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { withBasePath } from "@/lib/basePath";
 
 type Listener = (tick: number) => void;
 
@@ -17,7 +18,7 @@ function bump() {
 function ensureConnected() {
   if (eventSource || typeof window === "undefined") return;
   try {
-    eventSource = new EventSource("/api/watch");
+    eventSource = new EventSource(withBasePath("/api/watch"));
   } catch {
     return;
   }

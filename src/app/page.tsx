@@ -6,6 +6,7 @@ import { DetailPanel } from "@/components/DetailPanel";
 import { SearchBar } from "@/components/SearchBar";
 import { TimelinePanel } from "@/components/TimelinePanel";
 import { useRefreshTick } from "@/lib/useRefreshTick";
+import { withBasePath } from "@/lib/basePath";
 import { Clock } from "lucide-react";
 
 interface TreeEntry {
@@ -84,7 +85,7 @@ export default function Home() {
   const refreshTick = useRefreshTick();
 
   useEffect(() => {
-    fetch("/api/tree")
+    fetch(withBasePath("/api/tree"))
       .then((r) => r.json())
       .then((data) => {
         setTree(data.tree ?? []);

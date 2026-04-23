@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, X } from "lucide-react";
+import { withBasePath } from "@/lib/basePath";
 
 interface SearchMatch {
   line: number;
@@ -34,7 +35,7 @@ export function SearchBar({ onSelect }: Props) {
       return;
     }
     setIsSearching(true);
-    fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
+    fetch(withBasePath(`/api/search?q=${encodeURIComponent(q.trim())}`))
       .then((r) => r.json())
       .then((data) => {
         setResults(data.results ?? []);

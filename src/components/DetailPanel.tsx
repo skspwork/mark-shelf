@@ -7,6 +7,7 @@ import { TableOfContents, HeadingInfo } from "./TableOfContents";
 import { PreviewPopup } from "./PreviewPopup";
 import { LinkGraph } from "./LinkGraph";
 import { useRefreshTick } from "@/lib/useRefreshTick";
+import { withBasePath } from "@/lib/basePath";
 import { FileText, History, Network, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface FolderInfo {
@@ -57,7 +58,7 @@ export function DetailPanel({ filePath, fileRefs, folders, onNavigate, onGoBack,
   }, [filePath]);
 
   useEffect(() => {
-    fetch(`/api/file?path=${encodeURIComponent(filePath)}`)
+    fetch(withBasePath(`/api/file?path=${encodeURIComponent(filePath)}`))
       .then((r) => r.json())
       .then((data) => setContent(data.content ?? null))
       .catch(() => setContent(null));

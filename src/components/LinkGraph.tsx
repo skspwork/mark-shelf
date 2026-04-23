@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import cytoscape from "cytoscape";
 import { useRefreshTick } from "@/lib/useRefreshTick";
+import { withBasePath } from "@/lib/basePath";
 import { Filter } from "lucide-react";
 
 interface GraphNode {
@@ -124,7 +125,7 @@ export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onP
     setEmpty(false);
     setReady(false);
 
-    fetch("/api/graph")
+    fetch(withBasePath("/api/graph"))
       .then((r) => r.json())
       .then((data: { nodes: GraphNode[]; edges: GraphEdge[] }) => {
         if (cancelled || !containerRef.current) return;

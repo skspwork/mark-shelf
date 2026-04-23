@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Markdown, FileRef } from "./Markdown";
 import { useRefreshTick } from "@/lib/useRefreshTick";
+import { withBasePath } from "@/lib/basePath";
 import { ExternalLink } from "lucide-react";
 
 interface Props {
@@ -45,7 +46,7 @@ export function PreviewPopup({ path, position, onNavigate, onMouseEnter, onMouse
     setContent(null);
     setNestedPath(null);
     setNestedPos(null);
-    fetch(`/api/file?path=${encodeURIComponent(path)}`)
+    fetch(withBasePath(`/api/file?path=${encodeURIComponent(path)}`))
       .then((r) => r.json())
       .then((data) => setContent(data.content ?? null))
       .catch(() => setContent(null))

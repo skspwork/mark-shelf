@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { GitCommit, ChevronDown, ChevronRight } from "lucide-react";
 import { DiffView } from "./DiffView";
 import { useRefreshTick } from "@/lib/useRefreshTick";
+import { withBasePath } from "@/lib/basePath";
 
 interface CommitEntry {
   hash: string;
@@ -26,7 +27,7 @@ export function HistoryPanel({ filePath }: Props) {
   useEffect(() => {
     setLoading(true);
     setExpandedHash(null);
-    fetch(`/api/history?path=${encodeURIComponent(filePath)}`)
+    fetch(withBasePath(`/api/history?path=${encodeURIComponent(filePath)}`))
       .then((r) => r.json())
       .then((data) => {
         setHistory(data);

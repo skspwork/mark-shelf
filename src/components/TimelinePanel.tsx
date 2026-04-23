@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { GitCommit, FileText, ChevronDown, ChevronRight, X, Clock } from "lucide-react";
 import { DiffView } from "./DiffView";
 import { useRefreshTick } from "@/lib/useRefreshTick";
+import { withBasePath } from "@/lib/basePath";
 
 interface TimelineEntry {
   hash: string;
@@ -49,7 +50,7 @@ export function TimelinePanel({ onNavigate, onClose }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/timeline")
+    fetch(withBasePath("/api/timeline"))
       .then((r) => r.json())
       .then((data) => {
         setEntries(data.entries ?? []);
