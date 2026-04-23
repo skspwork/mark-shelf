@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+# マウントされた .git はホスト側 UID 所有なので、コンテナ内（root）から見ると
+# git 2.35.2+ の safe.directory チェックで弾かれる。履歴・タイムライン機能が
+# 黙って空になるのを防ぐため、起動時に全ディレクトリを信頼対象に追加する
+git config --global --add safe.directory '*'
+
 # ユーザー向けの BASE_PATH を Next.js が見る NEXT_PUBLIC_BASE_PATH に変換
 if [ -n "${BASE_PATH:-}" ] && [ "${BASE_PATH}" != "/" ]; then
   export NEXT_PUBLIC_BASE_PATH="${BASE_PATH}"
