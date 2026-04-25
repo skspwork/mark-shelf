@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/markshelf.svg)](https://www.npmjs.com/package/markshelf)
 [![license](https://img.shields.io/npm/l/markshelf.svg)](./LICENSE)
-[![ghcr](https://img.shields.io/badge/ghcr.io-markshelf--base-blue)](https://github.com/skspwork/mark-shelf/pkgs/container/markshelf-base)
+[![ghcr](https://img.shields.io/badge/ghcr.io-markshelf--base-blue)](https://github.com/skspwork/markshelf/pkgs/container/markshelf-base)
 
 Git リポジトリ内の Markdown ドキュメントを「読むため」に特化した構造化ビューア。
 

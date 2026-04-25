@@ -1,16 +1,16 @@
 {
   "name": "markshelf",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Structured markdown viewer for git repositories",
   "license": "MIT",
   "author": "sksp.work",
-  "homepage": "https://github.com/skspwork/mark-shelf#readme",
+  "homepage": "https://github.com/skspwork/markshelf#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/skspwork/mark-shelf.git"
+    "url": "git+https://github.com/skspwork/markshelf.git"
   },
   "bugs": {
-    "url": "https://github.com/skspwork/mark-shelf/issues"
+    "url": "https://github.com/skspwork/markshelf/issues"
   },
   "keywords": [
     "markdown",
