@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # npm provenance に必要
+      id-token: write   # Trusted Publishing (OIDC) と provenance 署名に必要
 
     steps:
       - name: Checkout
@@ -21,6 +21,10 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+
+      - name: Update npm
+        # Trusted Publishing は npm 11.5.1 以降が必要
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -35,6 +39,6 @@ jobs:
           fi
 
       - name: Publish to npm
-        run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Trusted Publisher 設定 (npmjs.com の package settings) からの OIDC で認証されるため、
+        # NPM_TOKEN 等のシークレットは不要。provenance も自動で付与される。
+        run: npm publish
