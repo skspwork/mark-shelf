@@ -71,6 +71,17 @@ export function LinkGraph({ currentPath, folders, onNavigate, onPreviewShow, onP
   }, []);
 
   useEffect(() => {
+    if (folders.length === 0) return;
+    const valid = new Set(folders.map((f) => f.path));
+    setExcluded((prev) => {
+      const next = prev.filter((p) => valid.has(p));
+      if (next.length === prev.length) return prev;
+      localStorage.setItem(EXCLUDE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [folders]);
+
+  useEffect(() => {
     if (!showFilter) return;
     const onClick = (e: MouseEvent) => {
       if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target as Node)) {
